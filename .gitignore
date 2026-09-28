@@ -164,3 +164,13 @@ uv-cache/
 # =============================================================================
 infra/nginx/certs/nginx.crt
 infra/nginx/certs/nginx.key
+
+# =============================================================================
+# Local scratch / demo files (not for the repo)
+# =============================================================================
+predict.json
+req.json
+severe.json
+coverage.xml
+htmlcov/
+sandbox/
