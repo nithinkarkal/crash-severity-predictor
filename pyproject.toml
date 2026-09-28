@@ -140,6 +140,7 @@ exclude = [                             # exclure non-source dirs
 [[tool.mypy.overrides]]
 module = [
     "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*",
+    "shap", "yaml", "streamlit", "streamlit_cookies_controller", "plotly", "plotly.*",
 ]
 ignore_missing_imports = true
 
@@ -150,6 +151,7 @@ module = [
     "services.training.tests.*",
     "services.backend.tests.*",
     "services.monitoring.tests.*",
+    "services.frontend.tests.*",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false

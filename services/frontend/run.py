@@ -10,7 +10,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from services.frontend.src.app import main
+from services.frontend.src.app import main  # noqa: E402  (import after sys.path setup)
 
 if __name__ == "__main__":
     main()

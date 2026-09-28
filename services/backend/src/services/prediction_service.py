@@ -6,6 +6,7 @@ and makes predictions on incoming requests.
 """
 
 import time
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ from fastapi import HTTPException
 
 from common.utils.asp_logging import get_logger
 from common.utils.mlflow import load_registered_model, setup_mlflow
-from common.utils.paths import MODEL_CONFIG
+from common.utils.paths import DATA_PROCESSING_CONFIG, MODEL_CONFIG
 from services.backend.src.core.metrics import model_loaded, prediction_confidence, prediction_duration_seconds, predictions_total
 from services.backend.src.schemas.prediction import (
     ExplanationResponse,
@@ -146,6 +147,49 @@ def get_model_status() -> dict:
         "name": _model_cache["name"],
         "alias": _model_cache["alias"],
         "features_count": len(_model_cache["features"]) if _model_cache["features"] else 0,
+    }
+
+
+def get_model_info() -> dict[str, Any]:
+    """Return metadata for the currently served model (for the /model/info endpoint).
+
+    Uses the in-memory cache + project config, plus the model's own
+    ``feature_importances_`` (RandomForest) — no MLflow round-trip required.
+    """
+    if _model_cache["model"] is None:
+        load_model()
+
+    model = _model_cache["model"]
+    features = _model_cache["features"] or []
+    name = _model_cache["name"] or ""
+    alias = _model_cache["alias"] or "production"
+
+    # cache name looks like "<registry>@<alias> (v<version>)" — pull the version out
+    version = name.split("(v", 1)[1].rstrip(")") if "(v" in name else "unknown"
+
+    # training window from config (all years except the held-out test year)
+    years = DATA_PROCESSING_CONFIG.get("years", [])
+    test_year = DATA_PROCESSING_CONFIG.get("exclusive_test_year")
+    train_years = [y for y in years if y != test_year]
+    dataset = f"BAAC {min(train_years)}-{max(train_years)}" if train_years else "BAAC"
+
+    # per-feature importances straight from the RandomForest (real, no MLflow call)
+    feature_importance: dict[str, float] = {}
+    if model is not None and hasattr(model, "feature_importances_"):
+        ranked = sorted(zip(features, model.feature_importances_, strict=False), key=lambda t: t[1], reverse=True)
+        feature_importance = {str(f): round(float(v), 6) for f, v in ranked}
+
+    return {
+        "registry_name": MODEL_CONFIG["model_registry_name"],
+        "alias": alias,
+        "version": str(version),
+        "algorithm": type(model).__name__ if model is not None else "unknown",
+        "trained_at": "unknown",
+        "dataset": dataset,
+        "features_count": len(features),
+        "metrics": {},
+        "parameters": dict(MODEL_CONFIG.get("model_parameters", {})),
+        "feature_importance": feature_importance,
     }
 
 

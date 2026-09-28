@@ -42,7 +42,7 @@ def _mapped_selectbox(
         key=f"prediction_{feature}",
     )
 
-    return selected_value
+    return selected_value  # type: ignore[no-any-return]
 
 
 def _number_input(
@@ -56,7 +56,7 @@ def _number_input(
     label = FEATURES_LABELS[feature]
     min_value, max_value = FEATURE_RANGES[feature]
 
-    return st.number_input(
+    return st.number_input(  # type: ignore[no-any-return]
         label,
         min_value=min_value,
         max_value=max_value,

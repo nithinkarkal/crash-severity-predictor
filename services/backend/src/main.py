@@ -12,7 +12,7 @@ from starlette.responses import Response
 
 from common.utils.asp_logging import get_logger
 from services.backend.src.core.metrics import http_request_duration_seconds, http_requests_total
-from services.backend.src.routes import auth, explain, health, metrics, predict, reload, train
+from services.backend.src.routes import auth, explain, health, metrics, model_info, predict, reload, train
 from services.backend.src.services.prediction_service import load_model
 
 logger = get_logger(__name__)
@@ -51,6 +51,7 @@ app.include_router(health.router)
 app.include_router(train.router)
 app.include_router(predict.router)
 app.include_router(explain.router)
+app.include_router(model_info.router)
 app.include_router(reload.router)
 app.include_router(metrics.router)
 
