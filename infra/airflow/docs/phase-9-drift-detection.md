@@ -40,15 +40,23 @@ reference = training years (2021–2023)   -> the "baseline"
 current   = the new annual batch (2024)  -> what we compare against the baseline
 ```
 
-Phase 9 adds a tiny export in `make_dataset` that snapshots the
-**raw, pre-normalization** frames:
+Phase 9 adds a tiny export in `make_dataset` that snapshots the split frames **with the `grav`
+target re-attached**:
 
 ```
-data/processed/reference_raw.csv   # 2021–2023, raw category codes + grav
-data/processed/current_raw.csv     # 2024,      raw category codes + grav
+data/processed/reference_raw.csv   # 2021–2023, category codes + grav
+data/processed/current_raw.csv     # 2024,      category codes + grav
 ```
 
-Evidently runs on those, so categorical drift stays interpretable.
+Evidently runs on those. Two reasons to snapshot them rather than reuse the model's `X_*.csv`:
+Evidently needs the **target column** alongside the features (for target drift), and taking the
+frames straight from the split gives a clean, self-contained baseline-vs-current pair.
+
+> **Note (feature scaling was removed).** An earlier version of this guide justified these frames as
+> "pre-normalization" — because `process_features` used to `StandardScaler`-scale the columns, which
+> would have turned integer category codes into meaningless floats for drift. Scaling has since been
+> **removed** (the model is tree-based and scale-invariant), so that specific gotcha no longer
+> applies. The raw export is still worth keeping for the target-column + clean-pair reasons above.
 
 **Isolated dependency.** Evidently pulls a big, version-sensitive dependency tree that can clash with
 the project's pinned `pandas`/`numpy`. So — exactly like the `dvc` runner image — Evidently lives
@@ -61,7 +69,7 @@ environment is never touched, and the unit tests **mock** Evidently, so CI needs
 
 ```
 common/data/merge_data.py         # + save_drift_frames()  (writes reference_raw / current_raw)
-common/data/make_dataset.py       # calls it before normalization; adds the 2 files to the guard
+common/data/make_dataset.py       # calls it right after split_data; adds the 2 files to the guard
 services/monitoring/drift.py      # the drift step: report + gate + metrics contract
 services/monitoring/tests/test_drift.py   # unit tests (Evidently mocked)
 infra/airflow/Dockerfile.drift    # tiny image: python:3.12-slim + evidently
@@ -70,10 +78,10 @@ infra/airflow/dags/asp_retraining_dag.py  # + detect_drift task (after train, be
 
 ### `save_drift_frames()` (in `merge_data.py`)
 
-It takes the split frames **before** scaling, re-attaches the `grav` target, and writes the two CSVs.
-`make_dataset` calls it right after `split_data` and before `process_features` — the only moment the
-data is both split *and* still raw. The two files are also added to `PROCESSED_FILES`, so if they're
-missing a rebuild recreates them.
+It takes the split frames, re-attaches the `grav` target, and writes the two CSVs. `make_dataset`
+calls it right after `split_data` (and before `process_features` imputes) — a single, clean moment
+where the data is split and labelled. The two files are also added to `PROCESSED_FILES`, so if
+they're missing a rebuild recreates them.
 
 ### `services/monitoring/drift.py` — the heart of the phase
 
@@ -291,7 +299,7 @@ Because this schema is fixed, wiring consumers later needs **no change** to the 
 
 You understand Phase 9 when you can explain:
 - The three things drift detection checks (data drift, target drift, F1 decay) and why we gate on F1.
-- Why we run on the **raw** reference/current frames (the normalization gotcha), and where they come from.
+- Why we run on the dedicated reference/current frames (target column + clean baseline-vs-current pair), and where they come from.
 - Why Evidently is isolated in the `asp-drift` image, and how the unit tests avoid needing it.
 - Where `detect_drift` sits in the DAG and what happens when the gate fails.
 - What the **metrics contract** is and why it's written now (so Prometheus/Grafana/frontend plug in later).
