@@ -85,8 +85,8 @@ Monitoring is at `https://asp.local:8081/grafana/`. See [`docs/`](docs/) for the
 
 ## Roadmap
 
-- [ ] **Dataset lineage** — stamp the DVC hash + git SHA into every MLflow run for one-click reproducibility.
-- [ ] **`/explain` endpoint** — per-prediction SHAP explanations.
+- [x] **Dataset lineage** — stamp the DVC hash + git SHA into every MLflow run for one-click reproducibility. ([docs](docs/dataset-lineage.md))
+- [x] **`/explain` endpoint** — per-prediction SHAP explanations. ([docs](docs/explain-endpoint.md))
 - [ ] **LLM-plain-language predictions** — turn SHAP output into a human-readable rationale.
 - [ ] **Model card** — documented intended use, metrics by segment, and limitations.
 - [ ] **Kubernetes** — autoscaling + canary/shadow deployment.

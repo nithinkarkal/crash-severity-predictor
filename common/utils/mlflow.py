@@ -14,6 +14,7 @@ from mlflow import MlflowClient
 from mlflow.entities.model_registry import ModelVersion
 
 from common.utils.asp_logging import get_logger
+from common.utils.lineage import collect_lineage
 
 logger = get_logger(__name__)
 
@@ -68,6 +69,15 @@ def log_run(
     mlflow.set_tag("local_model_name", train_out["model_name"])
     mlflow.log_params(train_out["parameters"])
     mlflow.log_metrics(eval_out["metrics"])
+
+    # Dataset & code lineage — tag the run with the exact DVC data hash + git commit
+    # so any run is traceable to the data and code that produced it. Never fatal.
+    try:
+        lineage = collect_lineage()
+        mlflow.set_tags(lineage)
+        logger.info(f"Logged lineage: git={lineage.get('git_commit_short')} data(md5)={lineage.get('dvc_processed_data_md5')}")
+    except Exception as exc:
+        logger.warning(f"Lineage tagging skipped ({exc}).")
 
     _log_named_artifact(
         local_path=train_out["artifacts"]["features"],
