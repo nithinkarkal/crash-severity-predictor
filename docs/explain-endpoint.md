@@ -34,6 +34,7 @@ Response (shape):
   "severity_code": 1,
   "probability": 0.83,
   "base_value": 0.35,
+  "summary": "Likely a severe or fatal injury (83% confidence). Main factors increasing this risk: speed limit (vma=110). Factors lowering the risk: safety equipment (secu1=0).",
   "top_features": [
     {"feature": "vma",   "value": 110.0, "shap_value": 0.12,  "direction": "increases"},
     {"feature": "secu1", "value": 0.0,   "shap_value": -0.07, "direction": "decreases"}

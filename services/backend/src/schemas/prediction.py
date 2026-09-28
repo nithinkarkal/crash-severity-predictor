@@ -139,6 +139,7 @@ class ExplanationResponse(BaseModel):
     severity_code: int = Field(..., ge=0, le=1, description="0=Indemne/Léger, 1=Blessé hosp./Tué")
     probability: float | None = Field(..., description="probability of the predicted class")
     base_value: float = Field(..., description="SHAP base value (expected model output before features)")
+    summary: str = Field(..., description="plain-language explanation of the prediction, generated from the SHAP contributions")
     top_features: list[FeatureContribution] = Field(..., description="top contributing features, largest |SHAP| first")
     model_used: str = Field(..., description="model name used")
 

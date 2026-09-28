@@ -31,6 +31,71 @@ SEVERITY_MAP = {
     1: "Injured (hospitalized) / Killed",
 }
 
+# readable names for raw BAAC feature codes — used to phrase the plain-language summary
+FEATURE_LABELS = {
+    "place": "seating position",
+    "catu": "road-user type",
+    "sexe": "sex",
+    "secu1": "safety equipment",
+    "year_acc": "accident year",
+    "victim_age": "victim age",
+    "nb_victim": "number of casualties",
+    "catv": "vehicle type",
+    "obsm": "mobile obstacle hit",
+    "motor": "engine type",
+    "nb_vehicles": "vehicles involved",
+    "catr": "road category",
+    "circ": "traffic regime",
+    "surf": "road surface",
+    "situ": "location on road",
+    "vma": "speed limit",
+    "jour": "day of month",
+    "mois": "month",
+    "lum": "lighting conditions",
+    "dep": "department",
+    "com": "commune",
+    "agg": "urban / rural area",
+    "int": "intersection type",
+    "atm": "weather",
+    "col": "collision type",
+    "lat": "latitude",
+    "long": "longitude",
+    "hour": "hour of day",
+}
+
+
+def _plain_language_summary(
+    severity_code: int,
+    probability: float | None,
+    top_features: list[FeatureContribution],
+    n: int = 3,
+) -> str:
+    """Turn the SHAP contributions into a short, human-readable sentence (no LLM).
+
+    Example: "Likely a severe or fatal injury (83% confidence). Main factors increasing
+    this risk: speed limit (vma=110), safety equipment (secu1=0). Factors lowering the
+    risk: lighting conditions (lum=1)."
+    """
+
+    def phrase(fc: FeatureContribution) -> str:
+        label = FEATURE_LABELS.get(fc.feature, fc.feature)
+        value = int(fc.value) if float(fc.value).is_integer() else round(fc.value, 2)
+        return f"{label} ({fc.feature}={value})"
+
+    verdict = "Likely a severe or fatal injury" if severity_code == 1 else "Likely a light injury"
+    confidence = f"{round(probability * 100)}% confidence" if probability is not None else "confidence unavailable"
+
+    increasing = [phrase(f) for f in top_features if f.shap_value > 0][:n]
+    lowering = [phrase(f) for f in top_features if f.shap_value < 0][:n]
+
+    parts = [f"{verdict} ({confidence})."]
+    if increasing:
+        parts.append("Main factors increasing this risk: " + ", ".join(increasing) + ".")
+    if lowering:
+        parts.append("Factors lowering the risk: " + ", ".join(lowering) + ".")
+    return " ".join(parts)
+
+
 # in-memory cache for loaded model
 _model_cache: dict = {
     "model": None,
@@ -293,11 +358,14 @@ def explain_accident(request: PredictionRequest, top_n: int = 10) -> Explanation
         for name, shap_value, value in ranked[:top_n]
     ]
 
+    summary = _plain_language_summary(prediction, probability, top_features)
+
     return ExplanationResponse(
         severity=SEVERITY_MAP.get(prediction, "Unknown"),
         severity_code=prediction,
         probability=probability,
         base_value=base_value,
+        summary=summary,
         top_features=top_features,
         model_used=model_name or "unknown",
     )
