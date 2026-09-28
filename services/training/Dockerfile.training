@@ -1,0 +1,50 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# solve dvc permission issue
+# dvc add artifacts/models
+# Adding...
+# ERROR: unexpected error - [Errno 13] Permission denied:
+# '/path/accident-severity-predictor/artifacts/.gitignore'
+
+# create non root user
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+RUN groupadd -g ${GROUP_ID} appuser && \
+    useradd -u ${USER_ID} -g appuser -m appuser
+
+# Install uv with pip to avoid  access denied from official download
+# ERROR: failed to build: failed to solve: failed to fetch oauth token: denied: denied
+RUN pip install --no-cache-dir uv
+
+# Copy project files for dependency installation
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies
+RUN uv sync --frozen --no-dev --group training
+
+# Copy source code - tests are in .dockerignore
+COPY common ./common
+COPY services ./services
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Create runtime folders
+RUN mkdir -p \
+    data/processed \
+    artifacts/models \
+    artifacts/metrics \
+    artifacts/reports &&\
+    chown -R appuser:appuser /app
+
+# switch to user
+USER appuser
+
+# check .venv is created
+RUN ls -la /app/.venv/bin/python
+
+# Default command: train then evaluate
+ENTRYPOINT ["/app/.venv/bin/python", "-m", "services.training.train"]

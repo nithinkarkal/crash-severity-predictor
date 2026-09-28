@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.venv
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Dev
+notebooks
+htmlcov
+mlruns
+*.ipynb
+
+# Tests
+**/tests/
+**/test_*.py
+conftest.py
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Docs
+*.md
+docs/

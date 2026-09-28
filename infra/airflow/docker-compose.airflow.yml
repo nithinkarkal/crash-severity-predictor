@@ -1,0 +1,54 @@
+# infra/airflow/docker-compose.airflow.yml
+#
+# Standalone Apache Airflow for the ASP project.
+# Runs COMPLETELY INDEPENDENTLY of the main project's docker-compose.yaml —
+# it is a separate stack that only orchestrates the pipeline.
+#
+# One container, `airflow standalone` (SQLite + SequentialExecutor) = the simplest
+# possible Airflow to read and learn from. It launches the project's existing
+# images as sibling containers through the mounted host Docker socket.
+#
+# Usage (from the infra/airflow/ folder):
+#   cp .env.example .env         # then edit HOST_PROJECT_ROOT
+#   docker compose -f docker-compose.airflow.yml up -d --build
+#   docker compose -f docker-compose.airflow.yml logs -f airflow   # find the admin password
+#   # open http://localhost:8080
+#   docker compose -f docker-compose.airflow.yml down
+
+services:
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    image: asp-airflow:latest
+    container_name: asp-airflow
+    command: standalone            # single-process Airflow: webserver + scheduler + SQLite
+    ports:
+      - "8080:8080"                # Airflow UI at http://localhost:8080
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"   # hide the built-in demo DAGs
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      # Absolute HOST path to the repo. The DAG passes this to the sibling
+      # containers so they bind-mount the REAL data/ and artifacts/ folders.
+      # (The host Docker daemon resolves mount paths, so they must be host paths.)
+      HOST_PROJECT_ROOT: ${HOST_PROJECT_ROOT}
+      # Image tags the DAGs launch (defaults match the main project's compose).
+      ASP_BACKEND_IMAGE: ${ASP_BACKEND_IMAGE:-asp-backend:latest}
+      ASP_TRAINING_IMAGE: ${ASP_TRAINING_IMAGE:-asp-training:latest}
+      ASP_RUNNER_IMAGE: ${ASP_RUNNER_IMAGE:-asp-airflow-runner:latest}
+      # DagsHub token for MLflow tracking (training service calls dagshub.init()).
+      DAGSHUB_USER_TOKEN: ${DAGSHUB_USER_TOKEN:-}
+      # Retraining DAG only: DagsHub creds for the DVC task + optional FastAPI reload URL.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      FASTAPI_RELOAD_URL: ${FASTAPI_RELOAD_URL:-}      # STEP 7: backend reload endpoint
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}        # STEP 8: Slack alerts webhook
+    volumes:
+      - ./dags:/opt/airflow/dags                   # your DAG(s)
+      - ./plugins:/opt/airflow/plugins             # Airflow plugins (empty for now)
+      - /var/run/docker.sock:/var/run/docker.sock  # lets DockerOperator talk to the host daemon
+    # Linux only: give Airflow's user access to the docker socket.
+    # On Docker Desktop (Windows/macOS) this is usually not needed and is harmless.
+    group_add:
+      - ${DOCKER_GID:-999}
+    restart: unless-stopped

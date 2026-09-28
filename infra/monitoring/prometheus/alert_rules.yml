@@ -1,0 +1,45 @@
+groups:
+  # --------------------------------------------------------------------
+  # Availability: backend up?
+  # --------------------------------------------------------------------
+  - name: backend_availability
+    rules:
+      - alert: BackendDown
+        expr: up{job="asp-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ASP backend is down"
+          description: "Prometheus has been unable to scrape asp-backend for 1 minute. The service is likely unreachable."
+
+  # --------------------------------------------------------------------
+  # API health: high error rate? high latency?
+  # --------------------------------------------------------------------
+  - name: backend_api
+    rules:
+      - alert: HighHttpErrorRate
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+          > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP 5xx error rate on ASP backend"
+          description: "{{ $value | humanizePercentage }} of requests over the last 5 minutes returned a 5xx error (threshold: 5%)."
+
+      - alert: HighHttpLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on {{ $labels.path }}"
+          description: "p95 latency for {{ $labels.path }} has exceeded 2s for 5 minutes (current: {{ $value | humanizeDuration }})."

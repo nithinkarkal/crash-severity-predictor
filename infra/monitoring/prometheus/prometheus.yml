@@ -1,0 +1,31 @@
+# Prometheus configuration for the ASP monitoring stack.
+
+global:
+  scrape_interval: 15s      # how often to scrape targets by default
+  evaluation_interval: 15s  # how often to evaluate alert rules
+  external_labels:
+    project: accident-severity-predictor
+
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  # Prometheus scraping its own /metrics endpoint - useful to know if Prometheus itself is healthy
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ASP backend - API + model monitoring metrics
+  - job_name: "asp-backend"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]
+        labels:
+          service: "backend"
+
+  # node-exporter - host/infrastructure metrics
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "infrastructure"

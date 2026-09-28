@@ -1,0 +1,68 @@
+# Alert rules — NK monitoring sandbox.
+# These fire inside Prometheus (visible under Prometheus > Alerts). Routing them
+# to Slack/email needs Alertmanager, which is intentionally out of scope here.
+
+groups:
+  # -------------------------------------------------------------------------
+  # Availability — is the backend being scraped at all?
+  # -------------------------------------------------------------------------
+  - name: availability
+    rules:
+      - alert: BackendDown
+        expr: up{service="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ASP backend target is down"
+          description: "Prometheus could not scrape the backend for 1 minute."
+
+  # -------------------------------------------------------------------------
+  # API health — error rate + latency
+  # -------------------------------------------------------------------------
+  - name: api_health
+    rules:
+      - alert: HighHttpErrorRate
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate (>5%)"
+          description: "{{ $value | humanizePercentage }} of requests over 5m returned 5xx."
+
+      - alert: HighHttpLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on {{ $labels.path }}"
+          description: "p95 latency > 2s for 5m (current {{ $value | humanizeDuration }})."
+
+  # -------------------------------------------------------------------------
+  # Model health — drift + quality gate (uses NK's drift metrics)
+  # -------------------------------------------------------------------------
+  - name: model_health
+    rules:
+      - alert: ModelF1BelowThreshold
+        expr: model_f1_score < 0.65
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Promoted model F1 below gate (0.65)"
+          description: "Current model F1 is {{ $value }} — below the drift/quality gate floor."
+
+      - alert: DatasetDriftDetected
+        expr: model_dataset_drift_detected == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dataset drift detected in the latest report"
+          description: "The most recent drift report flagged dataset-level drift."

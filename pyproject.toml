@@ -1,0 +1,208 @@
+[project]
+name = "accident-severity-predictor"
+version = "0.1.0"
+description = "ML pipeline for predicting accident severity using French road accident data (BAAC)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+backend = [
+    "bcrypt>=5.0.0",
+    "fastapi>=0.139.0",
+    "httpx2>=2.9.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
+    "python-multipart>=0.0.32",
+    "requests>=2.34.2",
+    "uvicorn>=0.51.0",
+    "prometheus-client>=0.21.0"
+]
+dev = [
+    "dvc[s3]>=3.67.1",
+    "ipykernel>=7.3.0",
+    "jupyterlab>=4.6.1",
+    "mypy>=2.2.0",
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "python-dotenv>=1.2.2",
+    "ruff>=0.15.21",
+]
+frontend = [
+    "plotly>=6.9.0",
+    "streamlit>=1.59.1",
+]
+training = [
+    "dagshub>=0.7.1",
+    "joblib>=1.5.3",
+    "lightgbm>=4.6.0",
+    "matplotlib>=3.11.0",
+    "mlflow>=2.22,<3",
+    "numpy>=2.5.1",
+    "pandas>=2.2,<3",
+    "plotly>=6.9.0",
+    "scikit-learn>=1.9.0",
+    "seaborn>=0.13.2",
+    "xgboost>=3.3.0",
+]
+# Optional, ISOLATED group used only to run the Airflow DAG-integrity tests
+# (infra/airflow/tests/test_dags.py). NOT installed by default. Versions match the
+# asp-airflow image (infra/airflow/Dockerfile.airflow). Install with:
+#   uv sync --group airflow-tests
+# If it fails to resolve against the project's pins, don't force it — run the DAG
+# tests inside the asp-airflow container instead (it already has Airflow).
+airflow-tests = [
+    "apache-airflow==2.10.5",
+    "apache-airflow-providers-docker==3.14.1",
+]
+
+
+# === Ruff
+[tool.ruff]
+line-length = 150
+target-version = "py312"
+exclude = [
+    ".venv",
+    "artifacts",
+    "data",
+    "htmlcov",
+    ".pytest_cache",
+    "notebooks",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade
+    "B",   # Bug
+]
+
+# solve: args name should be lowercase (X_train, X_test convention ML)
+# solve: variable in function should be lowercase (X_train, X_test convention ML)
+[tool.ruff.lint.per-file-ignores]
+# ML conventions: X_train, X_test, y_train, y_test are standard
+"common/data/*.py" = ["N803", "N806"]
+"services/training/src/*.py" = ["N803", "N806"]
+"services/training/tests/*.py" = ["N803", "N806"]
+"common/tests/*.py" = ["N803", "N806"]
+
+# Notebooks: trailing whitespace + ML naming
+"notebooks/**/*.ipynb" = ["N803", "N806", "W291"]
+
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "common",
+    "services",
+]
+
+
+# === mypy
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+# solve: error: Source file found twice under different module names:
+# "asp_logging" and "common.utils.asp_logging"
+explicit_package_bases = true          # avoid conflict name with python packages
+exclude = [                             # exclure non-source dirs
+    "^\\.venv/",
+    "^artifacts/",
+    "^data/",
+    "^notebooks/",
+    "^htmlcov/",
+    "^\\.pytest_cache/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*",
+]
+ignore_missing_imports = true
+
+# relax strict typing tests
+[[tool.mypy.overrides]]
+module = [
+    "common.tests.*",
+    "services.training.tests.*",
+    "services.backend.tests.*",
+    "services.monitoring.tests.*",
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+
+# pytest + coverage
+[tool.pytest.ini_options]
+testpaths = [
+    "common/tests",
+    "services/training/tests",
+    "services/backend/tests",
+    "services/monitoring/tests",
+    "infra/airflow/tests",
+]
+pythonpath = ["."]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--cov=common",
+    "--cov=services",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=80",
+    "-ra",
+    "--import-mode=importlib",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:joblib.*:0",     # joblib
+    "ignore::UserWarning:sklearn.*:0",           # sklearn feature names
+]
+
+[tool.coverage.run]
+source = [
+    "common",
+    "services"
+]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "__init__.py",
+    "*/train.py",
+    "*/evaluate.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"

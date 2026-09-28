@@ -1,0 +1,17 @@
+# infra/airflow/Dockerfile.drift
+# Tiny standalone image for the retraining DAG's `detect_drift` task.
+#
+# It carries ONLY Evidently (+ the pandas/numpy Evidently pulls in), isolated from the
+# project's pinned dependencies — so Evidently's version constraints can never clash with
+# the main `uv` environment (same idea as Dockerfile.runner isolating `dvc`).
+#
+# The DAG bind-mounts the whole repo at /app at run time, so no project code is baked in.
+#
+# Build (from the repo root):
+#   docker build -f infra/airflow/Dockerfile.drift -t asp-drift:latest infra/airflow
+
+FROM python:3.12-slim
+
+# Evidently 0.4.x provides the ColumnMapping + *Preset + TestSuite API used by
+# services/monitoring/drift.py. Pinned for reproducibility (same habit as the other images).
+RUN pip install --no-cache-dir "evidently>=0.4.30,<0.5"

@@ -1,0 +1,37 @@
+stages:
+  download_data:
+    cmd: uv run python -m common.data.download_data
+    deps:
+      - common/data/download_data.py
+      - common/utils/paths.py
+    outs:
+      - data/raw/:
+          cache: true
+
+  make_dataset:
+    cmd: mkdir -p data/processed && uv run python -m common.data.make_dataset
+    deps:
+      - common/data/make_dataset.py
+      - common/utils/paths.py
+      - data/raw/
+    outs:
+      - data/processed/:
+          cache: true
+
+  train:
+    cmd: uv run python -m services.training.train
+    deps:
+      - services/training/train.py
+      - common/utils/paths.py
+      - common/utils/mlflow.py
+      - data/processed/
+    outs:
+      - artifacts/models/:
+          cache: true
+          persist: true
+      - artifacts/metrics/:
+          cache: true
+          persist: true
+      - artifacts/reports/:
+          cache: true
+          persist: true

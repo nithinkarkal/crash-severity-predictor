@@ -1,0 +1,69 @@
+# .pre-commit-config.yaml
+# Runs all quality checks before each commit
+# Install: uv run pre-commit install
+# Run manually: uv run pre-commit run --all-files
+default_language_version:
+  python: python3.12
+
+repos:
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.16.0
+
+  hooks:
+
+    - id: ruff-check
+      name: 🔍 Ruff Check
+      args: [--fix]
+
+    - id: ruff-format
+      name: 🎨 Ruff Format
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+
+  hooks:
+
+    - id: check-yaml
+      name: 📋 YAML Syntax Check
+      types: [yaml]
+
+    - id: check-json
+      name: 📋 JSON Syntax Check
+      types: [json]
+
+    - id: check-toml
+      name: 📋 TOML Syntax Check
+      types: [toml]
+
+    - id: trailing-whitespace
+      name: ✂️ Trailing Whitespace
+
+    - id: end-of-file-fixer
+      name: 📄 End of File Fixer
+
+    - id: check-merge-conflict
+      name: 🔍 Check Merge Conflict
+
+    - id: check-added-large-files
+      name: 📦 Check Large Files
+
+    - id: mixed-line-ending
+      name: 📄 Mixed Line Endings
+
+
+- repo: local
+
+  hooks:
+
+    - id: mypy
+      name: 📝 MyPy Type Check
+      entry: uv run mypy common services
+      language: system
+      pass_filenames: false  # only get staged .py files
+
+    - id: pytest
+      name: 🧪 Pytest + Coverage
+      entry: uv run pytest
+      language: system
+      pass_filenames: false

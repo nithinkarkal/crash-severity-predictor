@@ -1,0 +1,92 @@
+# =============================================================================
+# NK personal monitoring & visualization SANDBOX  (Prometheus + Grafana)
+# -----------------------------------------------------------------------------
+# This is NOT the team's production monitoring (that lives in infra/monitoring/).
+# It is a self-contained stack for learning + building dashboards, on its OWN
+# ports and network so it can even run side-by-side with the team's stack.
+#
+# Ports (host):  Prometheus 9091 · Grafana 3001 · node-exporter 9101 · demo 8010
+#                (team uses 9090 / 3000 / 9100 — deliberately different here)
+#
+# Run:   docker compose -f docker-compose.monitoring.yml up -d --build
+# Open:  Grafana  http://localhost:3001   (admin / admin — change on first login)
+#        Prometheus http://localhost:9091
+# Stop:  docker compose -f docker-compose.monitoring.yml down
+# =============================================================================
+
+name: nk-monitoring        # isolates this project so it never clashes with others
+
+services:
+  # ---- Prometheus: scrapes metrics + evaluates alert rules --------------------
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: nk-prometheus
+    ports:
+      - "9091:9090"                       # host 9091 -> container 9090
+    volumes:
+      - ./prometheus:/etc/prometheus:ro   # our prometheus.yml + alert_rules.yml
+      - nk_prometheus_data:/prometheus     # persist the time-series database
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    networks: [nk-mon]
+
+  # ---- Grafana: dashboards (auto-provisioned from ./grafana) ------------------
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: nk-grafana
+    ports:
+      - "3001:3000"                       # host 3001 -> container 3000
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin   # sandbox only — change on first login
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro  # datasource + dashboard providers
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro   # the dashboard JSONs
+      - nk_grafana_data:/var/lib/grafana                      # persist users/settings
+    depends_on: [prometheus]
+    networks: [nk-mon]
+
+  # ---- node-exporter: host/infrastructure metrics (whole machine) ------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: nk-node-exporter
+    ports:
+      - "9101:9100"
+    networks: [nk-mon]
+
+  # ---- cAdvisor: PER-CONTAINER Docker metrics (CPU/mem/network per container) -
+  #      Reads Docker's cgroup + socket stats. On Docker Desktop (Win/Mac) these
+  #      read-only mounts are the standard set and work out of the box.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: nk-cadvisor
+    ports:
+      - "8082:8080"                       # host 8082 -> cAdvisor UI + /metrics
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    privileged: true                       # needed to read other containers' stats
+    networks: [nk-mon]
+
+  # ---- demo-exporter: emits sample ASP metrics so dashboards light up --------
+  #      WITHOUT needing the full app. Comment this out and point Prometheus at
+  #      the real backend (see prometheus.yml) once you want real numbers.
+  demo-exporter:
+    build: ./demo-exporter
+    container_name: nk-demo-exporter
+    ports:
+      - "8010:8010"
+    networks: [nk-mon]
+
+networks:
+  nk-mon:
+    driver: bridge
+
+volumes:
+  nk_prometheus_data:
+  nk_grafana_data:

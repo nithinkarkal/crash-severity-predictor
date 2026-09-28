@@ -1,0 +1,13 @@
+# Auto-load every dashboard JSON in /var/lib/grafana/dashboards on boot.
+apiVersion: 1
+
+providers:
+  - name: "asp-dashboards"
+    orgId: 1
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30      # re-read files every 30s (edit JSON, see it update)
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

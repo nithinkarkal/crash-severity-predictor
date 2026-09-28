@@ -1,0 +1,110 @@
+name: 🐳 ASP Container Build & Smoke Tes
+
+on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      DAGSHUB_USER_TOKEN:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [training, backend]
+        include:
+          - service: training
+            dockerfile: services/training/Dockerfile.training
+            image: asp-training:latest
+            smoke_cmd: 'python -c "import services.training.train; print(\"OK\")"'
+
+          - service: backend
+            dockerfile: services/backend/Dockerfile.backend
+            image: asp-backend:latest
+            smoke_cmd: 'python -c "import services.backend.src.main; print(\"OK\")"'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Python, UV and DVC Pull
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: 🚚 Pull ML Model from DagsHub (S3)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          uv run dvc pull
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🐳 Build ${{ matrix.service }} image
+        run: |
+          docker build \
+            -f ${{ matrix.dockerfile }} \
+            -t ${{ matrix.image }} .
+
+      - name: 🔥 Smoke test ${{ matrix.service }}
+        run: |
+          docker run --rm --entrypoint uv ${{ matrix.image }} \
+            run --no-sync ${{ matrix.smoke_cmd }}
+
+      - name: 🏥 Integration test (backend)
+        if: matrix.service == 'backend'
+        run: |
+          set -euo pipefail
+
+          echo "🚀 Starting backend container..."
+          docker run -d --name asp-backend-test \
+            -p 8000:8000 \
+            -v "$(pwd)/data:/app/data" \
+            -v "$(pwd)/artifacts:/app/artifacts" \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -e HOST_DATA_DIR="$(pwd)/data" \
+            -e HOST_ARTIFACTS_DIR="$(pwd)/artifacts" \
+            -e DAGSHUB_USER_TOKEN="${{ secrets.DAGSHUB_USER_TOKEN }}" \
+            ${{ matrix.image }}
+
+            # log output for better debugging
+          echo "⏳ Waiting for backend to start..."
+          sleep 5
+
+          echo "📋 Container status:"
+          docker ps -a --filter "name=asp-backend-test" --format "table {{.Names}}\t{{.Status}}\t{{.State}}"
+
+          echo "📝 Container logs (last 100 lines):"
+          docker logs --tail 100 asp-backend-test || true
+
+          echo "🔍 Checking if container is still running..."
+          if [ "$(docker inspect -f '{{.State.Running}}' asp-backend-test 2>/dev/null)" != "true" ]; then
+            echo "❌ CRITICAL: Container crashed before health check!"
+            echo "📄 Full crash logs:"
+            docker logs asp-backend-test
+            exit 1
+          fi
+
+          echo "🌐 Pinging health endpoint with retry..."
+          for i in {1..12}; do
+            echo "Attempt $i/12..."
+            if curl -sf http://localhost:8000/api/v1/health; then
+              echo ""
+              echo "✅ Health check passed!"
+              docker stop asp-backend-test && docker rm asp-backend-test
+              exit 0
+            fi
+            sleep 3
+          done
+
+          echo "❌ Health check failed after 12 attempts"
+          echo "📄 Final container logs:"
+          docker logs --tail 50 asp-backend-test
+          docker stop asp-backend-test && docker rm asp-backend-test || true
+          exit 1

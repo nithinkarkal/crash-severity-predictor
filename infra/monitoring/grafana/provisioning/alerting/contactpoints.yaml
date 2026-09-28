@@ -1,0 +1,16 @@
+# Grafana alerting — contact point (where alerts are sent).
+# The Slack webhook URL is read from the SLACK_WEBHOOK_URL env var (in .env.grafana),
+# so the secret is NOT committed. Grafana expands $__env{...} at startup.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: slack-asp
+    receivers:
+      - uid: slack_asp_webhook
+        type: slack
+        settings:
+          url: $__env{SLACK_WEBHOOK_URL}
+          title: '{{ template "default.title" . }}'
+          text: '{{ template "default.message" . }}'
+        disableResolveMessage: false   # also notify when an alert recovers

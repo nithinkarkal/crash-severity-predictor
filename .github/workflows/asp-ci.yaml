@@ -1,0 +1,24 @@
+name: 🚀 Accident Severity Predictor (ASP) CI
+
+on:
+  push:
+    branches: [main, develop]
+
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  code-quality:
+    uses: ./.github/workflows/asp-code-quality.yaml
+
+  test-suite:
+    needs: code-quality
+    uses: ./.github/workflows/asp-test-suite.yaml
+
+  container-build:
+    needs: test-suite
+    uses: ./.github/workflows/asp-container-build.yaml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_USER_TOKEN }}

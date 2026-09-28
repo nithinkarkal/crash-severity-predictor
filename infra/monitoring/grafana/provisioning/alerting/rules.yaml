@@ -1,0 +1,110 @@
+# Grafana alerting — the three alert rules.
+# Each rule: a Prometheus query (refId A) + a threshold expression (refId C).
+# datasourceUid "prometheus" matches provisioning/datasources/prometheus.yml.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: asp-alerts
+    folder: ASP Alerts
+    interval: 1m                 # how often Grafana evaluates these rules
+    rules:
+
+      # ---- 1) Backend down: up{job="asp-backend"} == 0 ---------------------
+      - uid: asp_backend_down
+        title: ASP backend is down
+        condition: C
+        for: 2m                  # must stay bad for 2 minutes before firing
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: "ASP backend target is DOWN (Prometheus can't scrape it) for 2m."
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: up{job="asp-backend"}
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: { type: __expr__, uid: __expr__ }
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+
+      # ---- 2) High 5xx error rate: > 5% over 5m ---------------------------
+      - uid: asp_high_5xx
+        title: ASP high 5xx error rate
+        condition: C
+        for: 2m
+        noDataState: OK          # no traffic => no error rate => fine
+        execErrState: Alerting
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5% of requests returned 5xx over the last 5 minutes."
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'sum(rate(http_requests_total{status_code=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 0.0001)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: { type: __expr__, uid: __expr__ }
+              conditions:
+                - evaluator: { type: gt, params: [0.05] }
+
+      # ---- 3) Model F1 below the quality gate: < 0.65 --------------------
+      - uid: asp_model_f1_low
+        title: ASP model F1 below gate
+        condition: C
+        for: 5m
+        noDataState: OK          # no F1 metric yet => treat as OK (outages covered by backend-down)
+        execErrState: Alerting
+        labels:
+          severity: warning
+        annotations:
+          summary: "Promoted model F1 is below the 0.65 quality gate."
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: max(model_f1_score)
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: { type: __expr__, uid: __expr__ }
+              conditions:
+                - evaluator: { type: lt, params: [0.65] }

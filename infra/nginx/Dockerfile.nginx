@@ -1,0 +1,12 @@
+# ASP Nginx container - TLS termination + reverse proxy
+# Certificates are NOT baked into the image; they are mounted at runtime.
+FROM nginx:1.27-alpine
+
+# Replace default conf.d with our own (single-file config approach)
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Certificates are mounted here at runtime by docker-compose:
+#   ./infra/nginx/certs -> /etc/nginx/certs
+RUN mkdir -p /etc/nginx/certs
+
+EXPOSE 80 443

@@ -1,0 +1,11 @@
+# infra/airflow/Dockerfile.airflow
+# Minimal Airflow image for the ASP project.
+# Starts from the official Airflow image and adds ONLY the Docker provider,
+# which gives us the DockerOperator used by the DAG to launch the project's
+# existing images (asp-backend / asp-training) as short-lived sibling containers.
+
+FROM apache/airflow:2.10.5-python3.12
+
+# apache-airflow-providers-docker ships the DockerOperator + the docker SDK.
+# Pinned for reproducibility (same idea as uv.lock / dvc.lock in the main project).
+RUN pip install --no-cache-dir "apache-airflow-providers-docker==3.14.1"
