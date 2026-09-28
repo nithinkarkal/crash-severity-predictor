@@ -133,6 +133,13 @@ services:
     container_name: asp-grafana
     env_file:
       - .env.grafana
+    environment:
+      # Allow the Streamlit GUI to embed dashboards in an <iframe> (read-only).
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      # Anonymous VIEWER so embedded dashboards render without a separate Grafana login.
+      # (Read-only; admin actions still require the admin login. Matches the demo hardening note.)
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro  # datasource + dashboard providers
@@ -148,6 +155,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    restart: unless-stopped
+    networks:
+      - asp-network
+
+  # Streamlit GUI (predict + explain + train + embedded Grafana), 2 logins (admin/user)
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile.frontend
+    image: asp-frontend:latest
+    container_name: asp-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      # Talk to the backend over the internal network (HTTP, no TLS/cert issues).
+      BACKEND_URL: "http://asp-backend:8000"
+      # Grafana is embedded via the browser, so it uses the external TLS URL.
+      GRAFANA_URL: "https://asp.local:8081/grafana"
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - asp-network

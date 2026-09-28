@@ -1,0 +1,13 @@
+# Streamlit app configuration (picked up when running `streamlit run` from the repo root
+# or inside the container where this is copied to /app/.streamlit/config.toml).
+
+[theme]
+# Force dark mode by default (overrides the viewer's system preference).
+base = "dark"
+primaryColor = "#599191"
+backgroundColor = "#0F1418"
+secondaryBackgroundColor = "#192E36"
+textColor = "#E5E7EB"
+
+[browser]
+gatherUsageStats = false

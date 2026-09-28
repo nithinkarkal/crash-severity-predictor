@@ -11,6 +11,7 @@ from services.frontend.src.pages.login import login_page
 from services.frontend.src.pages.model_insights import model_insights_page
 from services.frontend.src.pages.monitoring import monitoring_page
 from services.frontend.src.pages.prediction import prediction_page
+from services.frontend.src.pages.training import training_page
 from services.frontend.src.services.session_service import (
     initialize_session,
     is_admin,
@@ -42,6 +43,12 @@ def enforce_page_access() -> None:
         "Prediction",
         "Model Insights",
         "Monitoring",
+        "Training",
+    }
+
+    admin_only_pages = {
+        "Monitoring",
+        "Training",
     }
 
     if page not in protected_pages:
@@ -52,7 +59,7 @@ def enforce_page_access() -> None:
         st.session_state.page = "Login"
         return
 
-    if page == "Monitoring" and not is_admin():
+    if page in admin_only_pages and not is_admin():
         st.session_state.page = "Home"
 
 
@@ -87,6 +94,9 @@ def main() -> None:
 
     elif page == "Monitoring":
         monitoring_page()
+
+    elif page == "Training":
+        training_page()
 
     elif page == "Login":
         login_page()

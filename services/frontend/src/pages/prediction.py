@@ -5,6 +5,7 @@ import streamlit as st
 
 from services.frontend.src.components.prediction_chart import (
     render_key_factors,
+    render_local_factors,
     render_prediction_confidence,
 )
 from services.frontend.src.config.features_mapping import (
@@ -12,9 +13,9 @@ from services.frontend.src.config.features_mapping import (
     FEATURE_RANGES,
     FEATURES_LABELS,
 )
-from services.frontend.src.models.prediction_model import PredictionResponse
+from services.frontend.src.models.prediction_model import ExplanationResponse, PredictionResponse
 from services.frontend.src.services.model_info_service import get_model_info
-from services.frontend.src.services.prediction_service import predict
+from services.frontend.src.services.prediction_service import explain, predict
 
 
 def _mapped_selectbox(
@@ -68,6 +69,7 @@ def _number_input(
 
 def _prediction_result_card(
     result: PredictionResponse,
+    explanation: ExplanationResponse | None = None,
 ) -> None:
     """Render the prediction result section."""
 
@@ -142,6 +144,30 @@ def _prediction_result_card(
     )
 
     # ================================================================
+    # PLAIN-LANGUAGE EXPLANATION (from /explain)
+    # ================================================================
+
+    if explanation is not None and explanation.summary:
+        st.html(
+            f"""
+            <div style="
+                margin-top: 0.9rem;
+                padding: 0.85rem 1rem;
+                border-radius: 12px;
+                background: rgba(89,145,145,0.12);
+                border: 1px solid rgba(89,145,145,0.35);
+                font-size: 0.92rem;
+                line-height: 1.5;
+            ">
+                <span style="opacity:0.6; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em;">
+                    Explanation
+                </span><br>
+                {explanation.summary}
+            </div>
+            """
+        )
+
+    # ================================================================
     # RESULT VISUALIZATION
     # ================================================================
 
@@ -154,10 +180,13 @@ def _prediction_result_card(
         render_prediction_confidence(result)
 
     with visualization_right:
-        model_info = get_model_info()
-
-        if model_info is not None:
-            render_key_factors(model_info)
+        # Prefer the per-prediction SHAP factors; fall back to global importance.
+        if explanation is not None and explanation.top_features:
+            render_local_factors(explanation)
+        else:
+            model_info = get_model_info()
+            if model_info is not None:
+                render_key_factors(model_info)
 
 
 def _prediction_form() -> None:
@@ -429,6 +458,14 @@ def _prediction_form() -> None:
 
     st.session_state.prediction_result = result
 
+    # Secondary, non-fatal: fetch the per-prediction explanation (SHAP + summary).
+    with st.spinner("Explaining prediction..."):
+        st.session_state.explanation_result = explain(payload, token)
+
+    # Rerun so the result block at the top of the page renders with the fresh result
+    # on THIS click (Streamlit renders top-to-bottom, before this handler runs).
+    st.rerun()
+
 
 def prediction_page() -> None:
     """Render the ASP Prediction Lab."""
@@ -470,7 +507,10 @@ def prediction_page() -> None:
     )
 
     if result is not None:
-        _prediction_result_card(result)
+        _prediction_result_card(
+            result,
+            st.session_state.get("explanation_result"),
+        )
 
     else:
         st.html(

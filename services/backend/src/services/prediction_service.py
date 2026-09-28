@@ -5,6 +5,7 @@ Loads a registered model from the MLflow Model Registry
 and makes predictions on incoming requests.
 """
 
+import json
 import time
 from typing import Any
 
@@ -14,7 +15,7 @@ from fastapi import HTTPException
 
 from common.utils.asp_logging import get_logger
 from common.utils.mlflow import load_registered_model, setup_mlflow
-from common.utils.paths import DATA_PROCESSING_CONFIG, MODEL_CONFIG
+from common.utils.paths import DATA_PROCESSING_CONFIG, METRIC_DIR, MODEL_CONFIG
 from services.backend.src.core.metrics import model_loaded, prediction_confidence, prediction_duration_seconds, predictions_total
 from services.backend.src.schemas.prediction import (
     ExplanationResponse,
@@ -215,6 +216,33 @@ def get_model_status() -> dict:
     }
 
 
+def _latest_training_metrics() -> tuple[dict[str, float], str]:
+    """Read the most recent training metrics JSON from artifacts/metrics/ (local, no MLflow call).
+
+    Returns (metrics, trained_at). Files are named model_<YYYYMMDDHHMMSS>_metrics.json, so the
+    lexicographically last one is the newest run. Degrades to ({}, "unknown") on any problem.
+    """
+    try:
+        files = sorted(METRIC_DIR.glob("model_*_metrics.json"))
+        if not files:
+            return {}, "unknown"
+
+        latest = files[-1]
+        raw = json.loads(latest.read_text())
+        metrics = {str(k): float(v) for k, v in raw.items() if isinstance(v, (int, float))}
+
+        trained_at = "unknown"
+        for part in latest.stem.split("_"):
+            if part.isdigit() and len(part) == 14:  # YYYYMMDDHHMMSS
+                trained_at = f"{part[0:4]}-{part[4:6]}-{part[6:8]} {part[8:10]}:{part[10:12]}:{part[12:14]}"
+                break
+
+        return metrics, trained_at
+    except Exception:
+        logger.warning("Could not read training metrics from %s", METRIC_DIR)
+        return {}, "unknown"
+
+
 def get_model_info() -> dict[str, Any]:
     """Return metadata for the currently served model (for the /model/info endpoint).
 
@@ -244,15 +272,17 @@ def get_model_info() -> dict[str, Any]:
         ranked = sorted(zip(features, model.feature_importances_, strict=False), key=lambda t: t[1], reverse=True)
         feature_importance = {str(f): round(float(v), 6) for f, v in ranked}
 
+    metrics, trained_at = _latest_training_metrics()
+
     return {
         "registry_name": MODEL_CONFIG["model_registry_name"],
         "alias": alias,
         "version": str(version),
         "algorithm": type(model).__name__ if model is not None else "unknown",
-        "trained_at": "unknown",
+        "trained_at": trained_at,
         "dataset": dataset,
         "features_count": len(features),
-        "metrics": {},
+        "metrics": metrics,
         "parameters": dict(MODEL_CONFIG.get("model_parameters", {})),
         "feature_importance": feature_importance,
     }

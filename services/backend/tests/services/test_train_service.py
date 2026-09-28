@@ -3,7 +3,6 @@
 Mock subprocess to avoid actual Docker calls during tests.
 """
 
-import os
 from subprocess import CalledProcessError, TimeoutExpired
 from unittest.mock import MagicMock, patch
 
@@ -23,9 +22,9 @@ def test_build_command_structure() -> None:
 
     assert cmd[0] == "docker"
     assert "--rm" in cmd
-    assert "-v" in cmd
-    assert "/host/data:/app/data" in cmd
-    assert "/host/artifacts:/app/artifacts" in cmd
+    assert "--mount" in cmd
+    assert "type=bind,source=/host/data,target=/app/data" in cmd
+    assert "type=bind,source=/host/artifacts,target=/app/artifacts" in cmd
     assert "-e" in cmd
     assert "MODEL_NAME=my-model" in cmd
     assert TRAINING_IMAGE in cmd
@@ -96,9 +95,6 @@ def test_run_uses_env_defaults(mock_run: MagicMock) -> None:
         training_service.run_training_container()
 
         call_args = mock_run.call_args[0][0]
-        # the service calls os.path.abspath() on the dirs, so compute the expected
-        # mounts the same way — keeps this test correct on both Linux (CI) and Windows.
-        expected_data = f"{os.path.abspath('/env/data')}:/app/data"
-        expected_artifacts = f"{os.path.abspath('/env/artifacts')}:/app/artifacts"
-        assert expected_data in call_args
-        assert expected_artifacts in call_args
+        # Absolute paths are passed through untouched and mounted via --mount type=bind.
+        assert "type=bind,source=/env/data,target=/app/data" in call_args
+        assert "type=bind,source=/env/artifacts,target=/app/artifacts" in call_args

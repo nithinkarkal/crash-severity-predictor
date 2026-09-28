@@ -20,3 +20,17 @@ class TrainResponse(BaseModel):
     status: str
     model_name: str
     message: str
+
+
+class TrainStatusResponse(BaseModel):
+    """Live status of the most recent training run (polled by the GUI)."""
+
+    state: str = Field(description="idle | running | succeeded | failed")
+    started_at: str | None = None
+    finished_at: str | None = None
+    duration_seconds: float | None = None
+    model_name: str | None = None
+    version: str | None = None
+    metrics: dict[str, float] = Field(default_factory=dict)
+    message: str = ""
+    error: str | None = None

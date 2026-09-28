@@ -66,6 +66,11 @@ def render_sidebar() -> None:
                     "Monitoring",
                 )
 
+                _nav_button(
+                    "🏋️  Training",
+                    "Training",
+                )
+
             st.html(
                 """
                 <div class="asp-sidebar-divider"></div>

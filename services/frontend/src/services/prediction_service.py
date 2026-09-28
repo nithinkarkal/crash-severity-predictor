@@ -5,7 +5,7 @@ from __future__ import annotations
 import requests
 
 from common.utils.asp_logging import get_logger
-from services.frontend.src.models.prediction_model import PredictionResponse
+from services.frontend.src.models.prediction_model import ExplanationResponse, PredictionResponse
 from services.frontend.src.services.api import api_client
 
 logger = get_logger(__name__)
@@ -62,3 +62,27 @@ def predict(
         )
 
         raise
+
+
+def explain(
+    payload: dict,
+    token: str,
+) -> ExplanationResponse | None:
+    """Request a per-prediction explanation (SHAP + plain-language summary).
+
+    Returns None on any failure — the explanation is a secondary enhancement and
+    must never block showing the prediction itself.
+    """
+
+    try:
+        response = api_client.post(
+            "/explain",
+            json=payload,
+            token=token,
+        )
+        response.raise_for_status()
+        return ExplanationResponse.model_validate(response.json())
+
+    except (requests.exceptions.RequestException, ValueError) as exc:
+        logger.warning("Explanation request failed (non-fatal): %s", exc)
+        return None

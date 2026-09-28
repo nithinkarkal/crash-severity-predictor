@@ -4,8 +4,39 @@ from __future__ import annotations
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
+from services.frontend.src.config.settings import settings
 from services.frontend.src.services.api import api_client
+
+# Grafana dashboards to embed (uid -> label), matching infra/monitoring/grafana/dashboards/.
+GRAFANA_DASHBOARDS = {
+    "nk-asp-api": "API Health",
+    "nk-asp-model": "Model",
+    "nk-asp-drift": "Drift & Quality Gate",
+    "asp-infra": "Infrastructure",
+}
+
+
+def _render_grafana_dashboards() -> None:
+    """Embed the live Grafana dashboards (read-only) in tabs."""
+
+    st.divider()
+    st.subheader("Live Dashboards (Grafana)")
+    st.caption(f"Live Prometheus-backed dashboards, embedded read-only. [Open Grafana in a new tab]({settings.grafana_url}/).")
+
+    tabs = st.tabs(list(GRAFANA_DASHBOARDS.values()))
+
+    for tab, uid in zip(tabs, GRAFANA_DASHBOARDS.keys(), strict=True):
+        with tab:
+            src = f"{settings.grafana_url}/d/{uid}?orgId=1&kiosk&theme=dark&refresh=10s"
+            components.iframe(src, height=620, scrolling=True)
+
+    st.caption(
+        "If a panel is blank locally, open the Grafana link above once to accept the "
+        "self-signed certificate, then reload this page. (On a real cloud TLS domain this "
+        "is seamless.)"
+    )
 
 
 def _status_badge(
@@ -262,3 +293,9 @@ def monitoring_page() -> None:
             st.subheader("Training Configuration")
 
             st.json(parameters)
+
+    # ---------------------------------------------------------
+    # Embedded live Grafana dashboards
+    # ---------------------------------------------------------
+
+    _render_grafana_dashboards()

@@ -49,6 +49,7 @@ def initialize_session() -> None:
         "remember_me": False,
         "post_login_page": "Home",
         "prediction_result": None,
+        "explanation_result": None,
     }
 
     for key, value in defaults.items():
@@ -110,6 +111,7 @@ def clear_authenticated_session() -> None:
     st.session_state.role = None
     st.session_state.remember_me = False
     st.session_state.prediction_result = None
+    st.session_state.explanation_result = None
     st.session_state.page = "Home"
     st.session_state.post_login_page = "Home"
 
@@ -191,6 +193,7 @@ def request_page(page: str) -> None:
         "Prediction",
         "Model Insights",
         "Monitoring",
+        "Training",
     }
 
     if page in protected_pages and not is_authenticated():

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8000"
     api_prefix: str = "/api/v1"
 
+    # grafana (for embedded dashboards on the monitoring page)
+    grafana_url: str = "https://asp.local:8081/grafana"
+
     # app
     app_name: str = "Accident Severity Predictor"
     app_short_name: str = "ASP"

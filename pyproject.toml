@@ -34,6 +34,10 @@ dev = [
 frontend = [
     "plotly>=6.9.0",
     "streamlit>=1.59.1",
+    "streamlit-cookies-controller>=0.0.4",
+    "requests>=2.34.2",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
 ]
 training = [
     "dagshub>=0.7.1",

@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from services.frontend.src.models.model_info import ModelInfo
-from services.frontend.src.models.prediction_model import PredictionResponse
+from services.frontend.src.models.prediction_model import ExplanationResponse, PredictionResponse
 
 
 def _probability_color(
@@ -99,11 +99,17 @@ def render_prediction_confidence(
 ) -> None:
     """Render one combined gauge with both class probabilities."""
 
+    # The backend returns a single `probability` for the PREDICTED class (+ severity_code).
+    # Derive both class probabilities from it (fall back to a full dict if ever provided).
     probabilities = result.probabilities
 
-    unharmed_probability = float(probabilities.get(0, 0.0))
-
-    severe_probability = float(probabilities.get(1, 0.0))
+    if probabilities:
+        unharmed_probability = float(probabilities.get(0, 0.0))
+        severe_probability = float(probabilities.get(1, 0.0))
+    else:
+        predicted = float(result.probability) if result.probability is not None else 0.0
+        severe_probability = predicted if result.severity_code == 1 else 1.0 - predicted
+        unharmed_probability = 1.0 - severe_probability
 
     gauge_column, summary_column = st.columns(
         [1.15, 0.85],
@@ -219,6 +225,66 @@ def render_prediction_confidence(
             </div>
             """
         )
+
+
+def render_local_factors(explanation: ExplanationResponse, top_n: int = 6) -> None:
+    """Render the top per-prediction SHAP factors as a signed horizontal bar chart.
+
+    Positive contributions (push toward severe/fatal) are red; negative (push toward
+    light) are green — matching the risk semantics of the confidence gauge.
+    """
+
+    factors = explanation.top_features[:top_n]
+
+    if not factors:
+        return
+
+    # smallest |shap| at top so the biggest bar sits at the bottom of the chart
+    ordered = sorted(factors, key=lambda f: abs(f.shap_value))
+
+    names = [f.feature for f in ordered]
+    values = [f.shap_value for f in ordered]
+    colors = ["#ef4444" if v >= 0 else "#22c55e" for v in values]
+    hover = [f"{f.feature} = {f.value:g}<br>{'increases' if f.shap_value >= 0 else 'lowers'} risk by {abs(f.shap_value):.3f}" for f in ordered]
+
+    fig = go.Figure(
+        go.Bar(
+            x=values,
+            y=names,
+            orientation="h",
+            marker={"color": colors},
+            text=hover,
+            hovertemplate="%{text}<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        height=330,
+        margin={"l": 10, "r": 20, "t": 35, "b": 25},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"color": "#E5E7EB"},
+        xaxis={
+            "title": "SHAP contribution (→ severe)",
+            "zeroline": True,
+            "zerolinecolor": "rgba(128,128,128,0.4)",
+            "gridcolor": "rgba(128,128,128,0.12)",
+        },
+        yaxis={"tickfont": {"size": 11}},
+    )
+
+    st.html(
+        """
+        <div style="margin-top: 0.25rem; margin-bottom: 0.15rem; font-size: 0.95rem; font-weight: 600;">
+            Why this prediction
+        </div>
+        <div style="margin-bottom: 0.25rem; font-size: 0.78rem; opacity: 0.65;">
+            Top factors for this specific case (SHAP)
+        </div>
+        """
+    )
+
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 def render_key_factors(model_info: ModelInfo) -> None:
