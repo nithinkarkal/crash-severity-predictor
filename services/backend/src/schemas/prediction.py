@@ -123,6 +123,26 @@ class PredictionResponse(BaseModel):
     model_used: str = Field(..., description="model name used")
 
 
+class FeatureContribution(BaseModel):
+    """A single feature's contribution to one prediction (SHAP value)."""
+
+    feature: str = Field(..., description="feature name")
+    value: float = Field(..., description="the feature's value for this input")
+    shap_value: float = Field(..., description="signed SHAP contribution toward the predicted class")
+    direction: str = Field(..., description="'increases' or 'decreases' the predicted class probability")
+
+
+class ExplanationResponse(BaseModel):
+    """Per-prediction explanation: which features pushed the decision, and how much."""
+
+    severity: str = Field(..., description="severity prediction in text")
+    severity_code: int = Field(..., ge=0, le=1, description="0=Indemne/Léger, 1=Blessé hosp./Tué")
+    probability: float | None = Field(..., description="probability of the predicted class")
+    base_value: float = Field(..., description="SHAP base value (expected model output before features)")
+    top_features: list[FeatureContribution] = Field(..., description="top contributing features, largest |SHAP| first")
+    model_used: str = Field(..., description="model name used")
+
+
 class HealthResponse(BaseModel):
     """health check response."""
 
