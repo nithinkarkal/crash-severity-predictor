@@ -8,7 +8,7 @@
 ![Tests](https://img.shields.io/badge/tests-241%20passing-brightgreen)
 ![Lint](https://img.shields.io/badge/lint-ruff-000000)
 ![Containerized](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
-![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
+[![CI](https://github.com/nithinkarkal/crash-severity-predictor/actions/workflows/asp-ci.yaml/badge.svg)](https://github.com/nithinkarkal/crash-severity-predictor/actions/workflows/asp-ci.yaml)
 
 > **Origin & credit:** This project began as a 4-person MLOps capstone. This repository is my
 > continued, independently-maintained version. On the original build, my ownership was **workflow
