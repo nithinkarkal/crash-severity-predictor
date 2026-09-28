@@ -3,6 +3,7 @@
 Mock subprocess to avoid actual Docker calls during tests.
 """
 
+import os
 from subprocess import CalledProcessError, TimeoutExpired
 from unittest.mock import MagicMock, patch
 
@@ -95,5 +96,9 @@ def test_run_uses_env_defaults(mock_run: MagicMock) -> None:
         training_service.run_training_container()
 
         call_args = mock_run.call_args[0][0]
-        assert "/env/data:/app/data" in call_args
-        assert "/env/artifacts:/app/artifacts" in call_args
+        # the service calls os.path.abspath() on the dirs, so compute the expected
+        # mounts the same way — keeps this test correct on both Linux (CI) and Windows.
+        expected_data = f"{os.path.abspath('/env/data')}:/app/data"
+        expected_artifacts = f"{os.path.abspath('/env/artifacts')}:/app/artifacts"
+        assert expected_data in call_args
+        assert expected_artifacts in call_args
