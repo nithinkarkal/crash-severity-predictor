@@ -3,6 +3,7 @@ mlflow tracking setup, run logging & model registry
 """
 
 import json
+import os
 from pathlib import Path
 from shutil import copy2
 from tempfile import TemporaryDirectory
@@ -40,14 +41,19 @@ def setup_mlflow(
 ) -> None:
     """setup mlflow for dagshub."""
 
-    logger.info("Initializing DagsHub MLflow tracking...")
+    # Which DagsHub repo backs the MLflow registry. Override via env to point at your own
+    # DagsHub (e.g. DAGSHUB_REPO_OWNER=nithinkarkal, DAGSHUB_REPO_NAME=crash-severity-predictor).
+    repo_owner = os.environ.get("DAGSHUB_REPO_OWNER", "Rackkoun")
+    repo_name = os.environ.get("DAGSHUB_REPO_NAME", "accident-severity-predictor")
+
+    logger.info(f"Initializing DagsHub MLflow tracking for {repo_owner}/{repo_name}...")
 
     # Increase HTTP timeout
     dagshub.common.config.http_timeout = 300
 
     dagshub.init(
-        repo_owner="Rackkoun",
-        repo_name="accident-severity-predictor",
+        repo_owner=repo_owner,
+        repo_name=repo_name,
         mlflow=True,
     )
 

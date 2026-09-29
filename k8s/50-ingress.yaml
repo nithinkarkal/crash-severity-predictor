@@ -1,0 +1,40 @@
+# Single entrypoint (replaces the compose nginx). Host asp.local, path-based routing:
+#   /api     -> backend  (FastAPI)
+#   /grafana -> grafana  (embedded dashboards; Grafana serves under this sub-path)
+#   /        -> frontend (Streamlit)
+# ingress-nginx matches the longest prefix, so /api and /grafana win over /.
+# No X-Frame-Options is added by ingress-nginx, and Grafana runs with allow_embedding=true,
+# so the dashboards embed cleanly with no cert step (all HTTP on one host locally).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: asp-ingress
+  namespace: asp
+  annotations:
+    # Long timeouts so Streamlit's websocket stays open.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: asp.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port: { number: 8000 }
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port: { number: 3000 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 8501 }

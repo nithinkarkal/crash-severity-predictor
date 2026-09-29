@@ -24,14 +24,18 @@ from common.utils.mlflow import (
 def test_setup_mlflow(
     mock_dagshub_init,
     mock_set_experiment,
+    monkeypatch,
 ) -> None:
-    """setup_mlflow initializes DagsHub and selects the experiment."""
+    """setup_mlflow reads the DagsHub repo from env and selects the experiment."""
+
+    monkeypatch.setenv("DAGSHUB_REPO_OWNER", "test-owner")
+    monkeypatch.setenv("DAGSHUB_REPO_NAME", "test-repo")
 
     setup_mlflow()
 
     mock_dagshub_init.assert_called_once_with(
-        repo_owner="Rackkoun",
-        repo_name="accident-severity-predictor",
+        repo_owner="test-owner",
+        repo_name="test-repo",
         mlflow=True,
     )
 

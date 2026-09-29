@@ -31,6 +31,9 @@ services:
       HOST_DATA_DIR: ${HOST_PROJECT_ROOT}/data
       HOST_ARTIFACTS_DIR: ${HOST_PROJECT_ROOT}/artifacts
       DAGSHUB_USER_TOKEN: ${DAGSHUB_USER_TOKEN}
+      # Which DagsHub repo backs the MLflow registry (defaults to your own).
+      DAGSHUB_REPO_OWNER: ${DAGSHUB_REPO_OWNER:-nithinkarkal}
+      DAGSHUB_REPO_NAME: ${DAGSHUB_REPO_NAME:-crash-severity-predictor}
       MLFLOW_HTTP_REQUEST_TIMEOUT: "300"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]

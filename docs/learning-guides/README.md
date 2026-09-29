@@ -21,6 +21,7 @@ Read them in order, or jump to the phase you're working on.
 | 12 | Dataset & code lineage (reproducible MLflow runs) | [phase-12](phase-12-dataset-lineage.md) |
 | 13 | Explainability & model transparency (`/explain` + plain-language, `/model/info`, model card) | [phase-13](phase-13-explainability-and-model-info.md) |
 | 14 | The GUI — role-based Streamlit app (predict · explain · train · monitor) | [phase-14](phase-14-streamlit-gui-rbac.md) |
+| 15 | Kubernetes — serving + monitoring on kind (Deployments/Services/Ingress) | [phase-15](phase-15-kubernetes.md) |
 | — | Airflow how-to-verify checklist | [../../infra/airflow/docs/HOW-TO-VERIFY.md](../../infra/airflow/docs/HOW-TO-VERIFY.md) |
 
 > **Where the guides live (single source of truth).** Phases 0–7 and the post-defense phases 12–13

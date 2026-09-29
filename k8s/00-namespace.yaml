@@ -1,0 +1,7 @@
+# All ASP resources live in their own namespace for tidy isolation.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: asp
+  labels:
+    app.kubernetes.io/part-of: accident-severity-predictor

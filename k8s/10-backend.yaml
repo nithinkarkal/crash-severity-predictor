@@ -1,0 +1,67 @@
+# Backend (FastAPI) — serving only on Kubernetes (predict / explain / model-info / health).
+# Training is intentionally NOT enabled on k8s (it uses Docker-out-of-Docker in compose;
+# the k8s-native equivalent would be a Job — left as future work). The model is loaded at
+# runtime from the MLflow registry on DagsHub, so no data/ volume is needed to serve.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: asp
+data:
+  MLFLOW_HTTP_REQUEST_TIMEOUT: "300"
+  # Your own DagsHub repo backs the MLflow registry.
+  DAGSHUB_REPO_OWNER: "nithinkarkal"
+  DAGSHUB_REPO_NAME: "crash-severity-predictor"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: asp
+  labels: { app: backend }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      containers:
+        - name: backend
+          image: asp-backend:latest
+          imagePullPolicy: IfNotPresent   # use the image loaded into kind, don't pull from a registry
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef: { name: backend-config }
+            - secretRef: { name: asp-backend-env }   # ADMIN_*, USER_*, JWT_* (from .env.backend)
+            - secretRef: { name: asp-dagshub }        # DAGSHUB_USER_TOKEN
+          volumeMounts:
+            # Real evaluation metrics so /model/info (and the GUI home cards) show live numbers.
+            - name: metrics
+              mountPath: /app/artifacts/metrics
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /api/v1/health, port: 8000 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /api/v1/health, port: 8000 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: metrics
+          configMap: { name: asp-metrics }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: asp
+spec:
+  selector: { app: backend }
+  ports:
+    - port: 8000
+      targetPort: 8000

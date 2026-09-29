@@ -1,0 +1,44 @@
+# Frontend (Streamlit GUI). Talks to the backend over the in-cluster Service DNS name.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: asp
+  labels: { app: frontend }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: asp-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8501
+          env:
+            # In-cluster call to the backend Service (plain HTTP, no TLS needed inside the cluster).
+            - name: BACKEND_URL
+              value: "http://backend:8000"
+            # Grafana is embedded via the browser, so it uses the external Ingress URL.
+            - name: GRAFANA_URL
+              value: "http://asp.local/grafana"
+          readinessProbe:
+            httpGet: { path: /_stcore/health, port: 8501 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: asp
+spec:
+  selector: { app: frontend }
+  ports:
+    - port: 8501
+      targetPort: 8501
