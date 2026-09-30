@@ -16,7 +16,7 @@ def test_predict_success(mock_predict: MagicMock, client: TestClient, valid_payl
         severity="Injured (hospitalized) / Killed",
         severity_code=1,
         probability=0.85,
-        model_used="accident-severity-predictor@production (v7)",
+        model_used="crash-severity-predictor@production (v7)",
     )
 
     response = client.post("/api/v1/predict", json=valid_payload)
@@ -25,7 +25,7 @@ def test_predict_success(mock_predict: MagicMock, client: TestClient, valid_payl
     data = response.json()
     assert data["severity_code"] == 1
     assert data["probability"] == 0.85
-    assert data["model_used"] == "accident-severity-predictor@production (v7)"
+    assert data["model_used"] == "crash-severity-predictor@production (v7)"
 
 
 @patch("services.backend.src.routes.predict.predict_accident")

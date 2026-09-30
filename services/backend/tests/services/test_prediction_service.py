@@ -67,7 +67,7 @@ def test_load_model_success(
         "run_id": "run-123",
     }
 
-    model_name = "accident-severity-predictor@production (v7)"
+    model_name = "crash-severity-predictor@production (v7)"
 
     before = _metric_value(
         "model_loaded",
@@ -82,7 +82,7 @@ def test_load_model_success(
     mock_setup_mlflow.assert_called_once()
 
     mock_load_registered_model.assert_called_once_with(
-        registry_model_name="accident-severity-predictor",
+        registry_model_name="crash-severity-predictor",
         alias="production",
     )
 
@@ -250,7 +250,7 @@ def test_predict_records_prometheus_metrics(
 ) -> None:
     """A prediction increments and observes the corresponding Prometheus metrics."""
 
-    model_name = "accident-severity-predictor@production (v7)"
+    model_name = "crash-severity-predictor@production (v7)"
     severity_code = "1"
 
     mock_model.predict.return_value = [1]
@@ -319,7 +319,7 @@ def test_predict_records_correct_prediction_metric_label(
 ) -> None:
     """predictions_total uses the actual predicted severity code as a label."""
 
-    model_name = "accident-severity-predictor@production (v7)"
+    model_name = "crash-severity-predictor@production (v7)"
 
     mock_model.predict.return_value = [0]
     mock_model.predict_proba.return_value = [[0.8, 0.2]]
@@ -373,7 +373,7 @@ def test_predict_without_predict_proba_does_not_record_confidence(
 ) -> None:
     """Models without predict_proba return no probability and don't observe confidence."""
 
-    model_name = "accident-severity-predictor@production (v7)"
+    model_name = "crash-severity-predictor@production (v7)"
 
     mock_model.predict.return_value = [1]
 
@@ -465,7 +465,7 @@ def test_predict_feature_mismatch(
         (False, None, None, None, 0),
         (
             True,
-            "accident-severity-predictor@production (v7)",
+            "crash-severity-predictor@production (v7)",
             "production",
             ["a", "b", "c"],
             3,

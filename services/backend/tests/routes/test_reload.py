@@ -19,7 +19,7 @@ def test_reload_success(client: TestClient) -> None:
             "services.backend.src.routes.reload.get_model_status",
             return_value={
                 "loaded": True,
-                "name": "accident-severity-predictor@production (v8)",
+                "name": "crash-severity-predictor@production (v8)",
                 "alias": "production",
                 "features_count": 29,
             },

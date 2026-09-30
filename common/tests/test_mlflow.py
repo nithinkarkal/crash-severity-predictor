@@ -192,7 +192,7 @@ def test_register_model(mock_register_model) -> None:
 
     mock_register_model.assert_called_once_with(
         model_uri="runs:/abc123/model",
-        name="accident-severity-predictor",
+        name="crash-severity-predictor",
     )
 
     assert result is mock_registered_version
@@ -243,12 +243,12 @@ def test_promote_if_better_no_current_production(
     assert result is True
 
     mock_client.get_model_version_by_alias.assert_called_once_with(
-        "accident-severity-predictor",
+        "crash-severity-predictor",
         "production",
     )
 
     mock_client.set_registered_model_alias.assert_called_once_with(
-        "accident-severity-predictor",
+        "crash-severity-predictor",
         "production",
         "1",
     )
@@ -294,12 +294,12 @@ def test_promote_if_better_new_version_is_better(
     mock_client.set_registered_model_alias.assert_has_calls(
         [
             call(
-                "accident-severity-predictor",
+                "crash-severity-predictor",
                 "fallback",
                 "2",
             ),
             call(
-                "accident-severity-predictor",
+                "crash-severity-predictor",
                 "production",
                 "3",
             ),
@@ -414,12 +414,12 @@ def test_promote_if_better_lower_is_better(
     mock_client.set_registered_model_alias.assert_has_calls(
         [
             call(
-                "accident-severity-predictor",
+                "crash-severity-predictor",
                 "fallback",
                 "2",
             ),
             call(
-                "accident-severity-predictor",
+                "crash-severity-predictor",
                 "production",
                 "3",
             ),
@@ -463,11 +463,11 @@ def test_load_registered_model(
     result = load_registered_model()
 
     mock_client.get_model_version_by_alias.assert_called_once_with(
-        "accident-severity-predictor",
+        "crash-severity-predictor",
         "production",
     )
 
-    mock_load_model.assert_called_once_with("models:/accident-severity-predictor@production")
+    mock_load_model.assert_called_once_with("models:/crash-severity-predictor@production")
 
     mock_client.download_artifacts.assert_called_once()
 

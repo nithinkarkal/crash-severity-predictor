@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 def test_model_info_success(mock_info: MagicMock, client: TestClient) -> None:
     """/model/info returns model metadata including feature importances."""
     mock_info.return_value = {
-        "registry_name": "accident-severity-predictor",
+        "registry_name": "crash-severity-predictor",
         "alias": "production",
         "version": "10",
         "algorithm": "RandomForestClassifier",

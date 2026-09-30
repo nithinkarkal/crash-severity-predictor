@@ -30,10 +30,10 @@ def test_latest_candidate_version_picks_highest() -> None:
         _version("2"),
     ]
 
-    result = promote_mod.latest_candidate_version(client, "accident-severity-predictor")
+    result = promote_mod.latest_candidate_version(client, "crash-severity-predictor")
 
     assert result.version == "3"
-    client.search_model_versions.assert_called_once_with("name='accident-severity-predictor'")
+    client.search_model_versions.assert_called_once_with("name='crash-severity-predictor'")
 
 
 def test_current_production_metric_none_when_no_alias() -> None:
@@ -138,6 +138,6 @@ def test_promote_calls_promote_if_better(
     mock_promote_if_better.assert_called_once_with(
         registered_version=candidate,
         eval_out={"metrics": {"f1_score": 0.9}},
-        registry_model_name="accident-severity-predictor",
+        registry_model_name="crash-severity-predictor",
         metric_name="f1_score",
     )

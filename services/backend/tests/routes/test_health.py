@@ -14,9 +14,9 @@ from fastapi.testclient import TestClient
         (False, None, False, None),
         (
             True,
-            "accident-severity-predictor@production (v7)",
+            "crash-severity-predictor@production (v7)",
             True,
-            "accident-severity-predictor@production (v7)",
+            "crash-severity-predictor@production (v7)",
         ),
     ],
 )

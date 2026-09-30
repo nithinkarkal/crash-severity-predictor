@@ -98,7 +98,7 @@ def loaded_model_cache(
         {
             "model": mock_model,
             "features": mock_features,
-            "name": "accident-severity-predictor@production (v7)",
+            "name": "crash-severity-predictor@production (v7)",
             "alias": "production",
         }
     )

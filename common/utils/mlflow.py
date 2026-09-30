@@ -43,8 +43,8 @@ def setup_mlflow(
 
     # Which DagsHub repo backs the MLflow registry. Override via env to point at your own
     # DagsHub (e.g. DAGSHUB_REPO_OWNER=nithinkarkal, DAGSHUB_REPO_NAME=crash-severity-predictor).
-    repo_owner = os.environ.get("DAGSHUB_REPO_OWNER", "Rackkoun")
-    repo_name = os.environ.get("DAGSHUB_REPO_NAME", "accident-severity-predictor")
+    repo_owner = os.environ.get("DAGSHUB_REPO_OWNER", "nithinkarkal")
+    repo_name = os.environ.get("DAGSHUB_REPO_NAME", "crash-severity-predictor")
 
     logger.info(f"Initializing DagsHub MLflow tracking for {repo_owner}/{repo_name}...")
 
@@ -118,7 +118,7 @@ def log_run(
 
 def register_model(
     model_info: mlflow.models.model.ModelInfo,
-    registry_model_name: str = "accident-severity-predictor",
+    registry_model_name: str = "crash-severity-predictor",
 ) -> ModelVersion:
     """register an already-logged model in the MLflow Model Registry."""
 
@@ -136,7 +136,7 @@ def register_model(
 def promote_if_better(
     registered_version: ModelVersion,
     eval_out: dict[str, Any],
-    registry_model_name: str = "accident-severity-predictor",
+    registry_model_name: str = "crash-severity-predictor",
     metric_name: str = "f1_score",
     higher_is_better: bool = True,
 ) -> bool:
@@ -217,7 +217,7 @@ def promote_if_better(
 
 
 def load_registered_model(
-    registry_model_name: str = "accident-severity-predictor",
+    registry_model_name: str = "crash-severity-predictor",
     alias: str = "production",
 ) -> dict[str, Any]:
     """

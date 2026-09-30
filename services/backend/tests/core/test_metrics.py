@@ -126,6 +126,6 @@ def test_refresh_drift_metrics_uses_supplied_model_version(
     contract_path.write_text(json.dumps(contract))
 
     with patch.object(metrics, "CONTRACT_FILE", contract_path):
-        metrics.refresh_drift_metrics("accident-severity-predictor@production (v7)")
+        metrics.refresh_drift_metrics("crash-severity-predictor@production (v7)")
 
-    assert metrics.model_f1_score.labels(model_version="accident-severity-predictor@production (v7)")._value.get() == 0.88
+    assert metrics.model_f1_score.labels(model_version="crash-severity-predictor@production (v7)")._value.get() == 0.88

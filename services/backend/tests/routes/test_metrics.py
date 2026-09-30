@@ -36,7 +36,7 @@ def test_metrics_uses_loaded_model_version(
 
     mock_get_model_status.return_value = {
         "loaded": True,
-        "name": "accident-severity-predictor@production (v7)",
+        "name": "crash-severity-predictor@production (v7)",
         "alias": "production",
         "features_count": 29,
     }
@@ -45,7 +45,7 @@ def test_metrics_uses_loaded_model_version(
 
     assert response.status_code == 200
     mock_get_model_status.assert_called_once_with()
-    mock_refresh_drift_metrics.assert_called_once_with("accident-severity-predictor@production (v7)")
+    mock_refresh_drift_metrics.assert_called_once_with("crash-severity-predictor@production (v7)")
 
 
 @patch("services.backend.src.routes.metrics.refresh_drift_metrics")
