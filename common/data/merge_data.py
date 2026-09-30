@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 CAT_COLS = [
     "place", "catu", "sexe", "secu1", "catv", "obsm", "motor", "catr", "circ",
@@ -138,12 +137,12 @@ def save_drift_frames(
         y_test: pd.Series,
         processed_data_dir: str | Path,
     ) -> None:
-    """Save the PRE-normalization reference and current frames for drift detection.
+    """Save the reference and current frames for drift detection.
 
-    Drift detection (Evidently) is only meaningful on the RAW category codes
-    (atm, col, catr, ...). The model's processed CSVs scale those columns to
-    floats, which hides the categories. So here we snapshot the frames *before*
-    normalization:
+    Called BEFORE feature processing, so these frames hold the original category codes
+    (atm, col, catr, ...) and any NaNs — which is what makes Evidently drift readable.
+    Note the pipeline does NOT scale features: the model is a scale-invariant RandomForest,
+    so the only later step (process_features) is imputation, not normalization.
 
       reference_raw.csv -> baseline years (the training split, e.g. 2021-2023) + grav
       current_raw.csv   -> the new annual batch (the test split, e.g. 2024)     + grav

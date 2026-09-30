@@ -117,8 +117,8 @@ def process_data(
         test_size=test_size, random_state=random_state,
     )
 
-    # Snapshot the RAW (pre-normalization) frames for drift detection, before the
-    # features get scaled. See save_drift_frames() for why.
+    # Snapshot the raw frames for drift detection BEFORE feature processing (imputation),
+    # so Evidently sees the original category codes + NaNs. See save_drift_frames() for why.
     logger.info("Saving raw reference/current frames for drift detection...")
     save_drift_frames(X_train, y_train, X_test, y_test, processed_data_dir)
 
