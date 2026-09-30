@@ -38,5 +38,12 @@ class Settings(BaseSettings):
     primary_color: str = "#599191"
     background_color: str = "#192E36"
 
+    # deployment — when true (public cloud demo), the login page shows/pre-fills
+    # demo credentials. Predict + explain only; the demo `user` role never sees
+    # Monitoring or Training. Driven by env vars CLOUD_DEMO / DEMO_USERNAME / DEMO_PASSWORD.
+    cloud_demo: bool = False
+    demo_username: str = "demo"
+    demo_password: str = "demo1234"
+
 
 settings = Settings()

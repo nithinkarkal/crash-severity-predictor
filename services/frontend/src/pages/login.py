@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from services.frontend.src.config.settings import settings
 from services.frontend.src.services.auth_service import login
 from services.frontend.src.services.session_service import (
     set_authenticated_session,
@@ -33,15 +34,25 @@ def login_page() -> None:
             """
         )
 
+        if settings.cloud_demo:
+            st.info(
+                f"**Demo access** — sign in with  \n"
+                f"username **`{settings.demo_username}`**  ·  password **`{settings.demo_password}`**  \n"
+                f"(prediction + explanation).",
+                icon="🔑",
+            )
+
         with st.form("login_form"):
             username = st.text_input(
                 "Username",
+                value=settings.demo_username if settings.cloud_demo else "",
                 placeholder="Enter your username",
             )
 
             password = st.text_input(
                 "Password",
                 type="password",
+                value=settings.demo_password if settings.cloud_demo else "",
                 placeholder="Enter your password",
             )
 

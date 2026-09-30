@@ -1,0 +1,17 @@
+# Keep the HF build context lean
+**/__pycache__/
+**/*.pyc
+.venv/
+.git/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+artifacts/
+data/
+mlruns/
+notebooks/
+sandbox/
+*.tar
+.coverage
+coverage.xml
