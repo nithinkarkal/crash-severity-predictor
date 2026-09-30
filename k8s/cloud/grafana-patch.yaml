@@ -1,0 +1,22 @@
+# Grafana must know its public HTTPS URL so links/assets resolve under /grafana.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: asp
+spec:
+  template:
+    spec:
+      containers:
+        - name: grafana
+          env:
+            - name: GF_SERVER_ROOT_URL
+              value: "https://__DOMAIN__/grafana"
+            - name: GF_SERVER_SERVE_FROM_SUB_PATH
+              value: "true"
+            - name: GF_SECURITY_ALLOW_EMBEDDING
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: "Viewer"

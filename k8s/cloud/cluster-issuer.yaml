@@ -1,0 +1,36 @@
+# Let's Encrypt issuers for cert-manager (HTTP-01 challenge via ingress-nginx).
+# __EMAIL__ is substituted at apply time by deploy/cloud/deploy.sh.
+#
+# Tip: test first with the STAGING issuer (no rate limits) by temporarily setting
+# the ingress annotation to letsencrypt-staging; once you see a cert issued, switch
+# back to letsencrypt-prod for a real browser-trusted certificate.
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: __EMAIL__
+    privateKeySecretRef:
+      name: letsencrypt-staging-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: __EMAIL__
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

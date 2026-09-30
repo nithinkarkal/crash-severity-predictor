@@ -1,0 +1,54 @@
+# Cloud overlay (k3s on Oracle Ampere / ARM64). Reuses the base manifests and
+# patches only the cloud-specific bits:
+#   - images pulled from GHCR (ghcr.io/nithinkarkal/*) instead of kind-loaded
+#   - Ingress host = your DuckDNS domain, with Let's Encrypt TLS (cert-manager)
+#   - Grafana root_url + frontend GRAFANA_URL switched to https://<domain>/grafana
+#
+# The __DOMAIN__ / __EMAIL__ tokens are substituted at apply time by
+# deploy/cloud/deploy.sh (kubectl kustomize | sed | kubectl apply), so you set
+# the domain/email once as env vars, not by hand-editing YAML.
+#
+# NOTE: if your GitHub username is not "nithinkarkal", edit the image newName below.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+images:
+  - name: asp-backend
+    newName: ghcr.io/nithinkarkal/asp-backend
+    newTag: latest
+  - name: asp-frontend
+    newName: ghcr.io/nithinkarkal/asp-frontend
+    newTag: latest
+
+patches:
+  # Re-pull :latest from GHCR on every rollout
+  - path: pullpolicy-backend-patch.yaml
+  - path: pullpolicy-frontend-patch.yaml
+  # HTTPS URLs for the embedded Grafana
+  - path: grafana-patch.yaml
+  - path: frontend-grafana-url-patch.yaml
+  # Ingress: real host + TLS via cert-manager
+  - target:
+      group: networking.k8s.io
+      version: v1
+      kind: Ingress
+      name: asp-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: __DOMAIN__
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-prod
+      - op: add
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1ssl-redirect
+        value: "true"
+      - op: add
+        path: /spec/tls
+        value:
+          - hosts:
+              - __DOMAIN__
+            secretName: asp-tls

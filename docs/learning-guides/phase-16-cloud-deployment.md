@@ -1,9 +1,10 @@
 # Phase 16 — Cloud: the finale (a live, public URL)
 
 > **Goal of this phase:** put the project on the public internet so a recruiter can click a link and
-> use it — no install, no local Docker. We do it in two tracks: **Track B** (quick) gets a live demo
-> up today on a free host; **Track A** (later) runs *real* Kubernetes in the cloud. This guide covers
-> **Track B**, done as a **single Hugging Face Docker Space**, and previews Track A.
+> use it — no install, no local Docker. Two tracks: **Track B** packages the app as a single
+> container for a quick host (Hugging Face / Cloud Run); **Track A** runs *real* Kubernetes in the
+> cloud (k3s on a free Oracle VM) with monitoring and TLS. We built both; **Track A is the shipped,
+> free public URL** (HF gated Docker Spaces behind PRO mid-project — see §16.1).
 
 This is the last phase. Everything before it built the machine; this phase plugs it into a wall
 socket the world can reach.
@@ -12,16 +13,22 @@ socket the world can reach.
 
 ## 16.1 The two tracks, and why
 
-| | Track B (this guide) | Track A (later) |
+| | Track B | Track A (the one we shipped) |
 |---|---|---|
-| Host | Hugging Face **Docker Space** (free) | **k3s** on Oracle Cloud Always Free (free) |
-| What runs | backend + Streamlit in **one container** | full k8s: serving + monitoring, real Ingress |
+| Host | Hugging Face **Docker Space** | **k3s** on Oracle Cloud Always Free |
+| What runs | backend + Streamlit in **one container** | full k8s: serving + monitoring, real Ingress + TLS |
 | Scope | predict + explain | predict + explain + monitoring |
 | Effort | ~30 min | a few hours (VM, DNS, TLS) |
-| Point | a shareable URL **now** | show cloud-native ops on a real node |
+| Point | a shareable URL fast | show cloud-native ops on a real node |
 
-Track B is deliberately the *quick win*: one free URL that stays up, so the project stops being
-"clone it and run docker compose" and becomes "here's the link."
+> **A note on Track B and "free".** When this project started, Hugging Face **Docker** Spaces ran
+> free on the CPU-basic tier. In **July 2026 HF changed that** — creating Gradio *or* Docker Spaces
+> now requires **PRO ($9/month)**; only **Static** Spaces stay free. The Track B container we built
+> is real and works (it passed a full local smoke test), and it's **host-agnostic** — that same
+> `deploy/hf-space/Dockerfile` runs on any Docker host (HF PRO, Google Cloud Run, a paid box). But
+> for a genuinely **free** public URL we went with **Track A**, which is also the more impressive
+> result: real Kubernetes with monitoring, on a free cloud VM. Track B stays in the repo as the
+> quick/paid option.
 
 ## 16.2 The key constraint that shapes the design
 
@@ -140,32 +147,60 @@ docker run --rm -p 7860:7860 `
 The served model is pulled from the **registry** at startup, so the demo needs no dataset volume and
 no training — exactly why "serving from a registry" was worth building.
 
-## 16.8 Track A preview — real Kubernetes in the cloud
+## 16.8 Track A — real Kubernetes in the cloud (what we shipped)
 
-Track A takes the Phase-15 manifests to a free cloud VM:
+Track A takes the Phase-15 manifests to a free cloud VM and makes four cloud changes. The elegant
+part: we **don't rewrite** the manifests — a **Kustomize overlay** (`k8s/cloud/`) reuses the base
+(`k8s/base/` → the Phase-15 files) and patches only what differs.
 
-1. **Oracle Cloud Always Free** ARM VM (up to 4 cores / 24 GB) → install **k3s** (a tiny, single-node
-   Kubernetes).
-2. Push the images to a registry (GHCR/Docker Hub) so the cluster can pull them (no more
-   `kind load`).
-3. Apply the `k8s/` manifests; point a free domain (DuckDNS) at the VM.
-4. Put **real TLS** in front (cert-manager + Let's Encrypt), then swap the Grafana embed origin and
-   the Ingress host from `asp.local` to the cloud domain — the HTTP-on-one-host reasoning from
-   Phase 15 §15.4 now runs on HTTPS on a real host.
+**1. Images from a registry, not `kind load`.** On a real cluster there's no `kind load`; the node
+pulls images. We cross-build the backend + frontend for **ARM64** (the free Oracle Ampere VM is
+arm64, and a Windows PC is amd64, so `docker buildx --platform linux/arm64`) and push to **GHCR**.
+The overlay's `images:` transformer rewrites `asp-backend` → `ghcr.io/nithinkarkal/asp-backend`, and
+a patch sets `imagePullPolicy: Always` so rollouts re-pull. (`deploy/cloud/build_push.ps1`.)
 
-That gives a public URL backed by *actual* Kubernetes with monitoring — the full stack, live.
+**2. A tiny Kubernetes: k3s.** `deploy/cloud/setup_k3s.sh` installs **k3s** with Traefik disabled
+(we keep ingress-nginx to match the project), then installs **ingress-nginx** and **cert-manager**.
+k3s ships a default `local-path` StorageClass, so the Prometheus/Grafana PVCs just bind — no change.
+Its built-in ServiceLB (klipper) binds host ports 80/443 to the ingress controller, so the VM's
+public IP serves the cluster directly.
+
+**3. A real host + TLS.** A free **DuckDNS** subdomain points at the VM's IP. The overlay patches the
+Ingress host from `asp.local` to your domain, adds a `cert-manager.io/cluster-issuer` annotation and
+a `tls:` block, and `k8s/cloud/cluster-issuer.yaml` defines **Let's Encrypt** issuers (HTTP-01 via
+ingress-nginx). cert-manager then issues a browser-trusted certificate automatically.
+
+**4. HTTPS everywhere for the embed.** Grafana's `root_url` and the frontend's `GRAFANA_URL` are
+patched from `http://asp.local/grafana` to `https://<domain>/grafana`. The Phase-15 §15.4 reasoning
+still holds — same host, ingress-nginx adds no `X-Frame-Options`, Grafana has `allow_embedding=true`
+— only now it's HTTPS on a real domain, so the embed is clean *and* secure.
+
+**Two firewalls.** Oracle VMs have a cloud-level Security List/NSG **and** the VM's own iptables
+(Ubuntu images block everything but 22 by default). Both must open 80/443 — a classic first-timer
+trap. `setup_k3s.sh` handles the VM iptables; the Security List you open in the Oracle Console.
+
+**Token substitution.** The overlay carries `__DOMAIN__` / `__EMAIL__` tokens; `deploy/cloud/deploy.sh`
+renders the overlay with `kubectl kustomize` and `sed`s the tokens in at apply time, so you set the
+domain/email once as env vars instead of hand-editing YAML. The same script creates the
+Secrets/ConfigMaps from your `.env*` and monitoring files exactly as the Phase-15 `deploy.ps1` did.
+
+Full step-by-step: `deploy/cloud/DEPLOY.md`. End result: a public **HTTPS** URL backed by *actual*
+Kubernetes with live monitoring — the whole stack, on a free cloud VM.
 
 ## 16.9 Phase 16 checkpoint
 
 You understand Phase 16 when you can explain:
 
-- Why Streamlit Community Cloud alone can't host this, and why a single Docker Space (two processes,
-  two ports, only 7860 public) is the quick answer.
+- Why a single Docker container (two processes, only 7860 public) is the quick Track-B answer, and
+  why HF's July-2026 move to gate Docker Spaces behind PRO pushed the *free* path to Track A.
 - How the same env-driven config runs locally and in the cloud with no code change, and why the
   DagsHub token had to be rotated before going public.
 - Why a `user`-role demo login yields predict + explain with no new gating code.
-- What Track B leaves out (monitoring, training) and why those belong to Track A.
-- The Track A path: k3s on a free VM, images from a registry, real TLS, cloud host swapped in.
+- Why a **Kustomize overlay** (base + patches) beats copying the manifests, and what the four cloud
+  patches change (registry images, ingress host, TLS, HTTPS Grafana URLs).
+- Why the images must be **ARM64** for the Oracle Ampere VM, and how `buildx` cross-builds them.
+- How k3s + ingress-nginx + cert-manager + DuckDNS produce a real HTTPS URL, and why **two**
+  firewalls (Oracle Security List + VM iptables) must both open 80/443.
 
 ---
 

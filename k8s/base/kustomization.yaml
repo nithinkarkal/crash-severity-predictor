@@ -1,0 +1,14 @@
+# Base = the local (kind) manifests, reused unchanged. The cloud overlay
+# (k8s/cloud) references this base and patches only what differs in the cloud
+# (image registry, ingress host + TLS, Grafana/embed URLs).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../00-namespace.yaml
+  - ../10-backend.yaml
+  - ../20-frontend.yaml
+  - ../30-prometheus.yaml
+  - ../31-node-exporter.yaml
+  - ../40-grafana.yaml
+  - ../50-ingress.yaml
