@@ -51,7 +51,11 @@ echo "==> Let's Encrypt ClusterIssuers"
 sed "s/__EMAIL__/${EMAIL}/g" k8s/cloud/cluster-issuer.yaml | kubectl apply -f -
 
 echo "==> Workloads (kustomize cloud overlay, domain=${DOMAIN})"
-kubectl kustomize k8s/cloud | sed -e "s/__DOMAIN__/${DOMAIN}/g" -e "s/__EMAIL__/${EMAIL}/g" | kubectl apply -f -
+# LoadRestrictionsNone: the base kustomization (k8s/base) references the manifests in
+# the parent k8s/ dir, which kustomize forbids under its default root-only restrictor.
+kubectl kustomize --load-restrictor LoadRestrictionsNone k8s/cloud \
+    | sed -e "s/__DOMAIN__/${DOMAIN}/g" -e "s/__EMAIL__/${EMAIL}/g" \
+    | kubectl apply -f -
 
 echo "==> Waiting for rollouts..."
 kubectl rollout status deploy/backend    -n asp --timeout=300s

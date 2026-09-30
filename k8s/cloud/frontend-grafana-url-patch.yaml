@@ -14,3 +14,11 @@ spec:
               value: "http://backend:8000"
             - name: GRAFANA_URL
               value: "https://__DOMAIN__/grafana"
+            # Public cloud demo: show + pre-fill demo credentials on the login page.
+            # The backend's user-role account must match (USER_USERNAME/USER_PASSWORD_HASH_B64).
+            - name: CLOUD_DEMO
+              value: "1"
+            - name: DEMO_USERNAME
+              value: "demo"
+            - name: DEMO_PASSWORD
+              value: "demo1234"

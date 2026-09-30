@@ -2,6 +2,11 @@
 
 **End-to-end MLOps pipeline that predicts road-accident injury severity from French open government data (ONISR / BAAC).**
 
+### 🌐 [**Live demo → crash-severity.duckdns.org**](https://crash-severity.duckdns.org/)
+
+Running on real Kubernetes (k3s) in the cloud, with HTTPS. Sign in with **`demo`** / **`demo1234`** to try a prediction and its SHAP explanation. *(First load may take a few seconds to wake.)*
+
+[![Live demo](https://img.shields.io/badge/live%20demo-crash--severity.duckdns.org-brightgreen)](https://crash-severity.duckdns.org/)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Model](https://img.shields.io/badge/model-RandomForest-2f8a53)
 ![F1](https://img.shields.io/badge/F1-0.69%20(gate%200.65)-success)
@@ -124,7 +129,7 @@ kubectl apply -f k8s/          # or: ./k8s/deploy.ps1   (creates secrets/config 
 - [x] **Role-based Streamlit GUI** — predict + explain + admin training + embedded Grafana, 2 logins. ([docs](docs/learning-guides/phase-14-streamlit-gui-rbac.md))
 - [x] **Kubernetes** — serving + monitoring on k8s via Ingress (tested on kind). ([k8s/](k8s/))
 - [x] **Independent model registry** — own DagsHub repo, configurable via env.
-- [ ] **Cloud deployment** — public HTTPS URL (managed hosting → k3s in the cloud).
+- [x] **Cloud deployment** — live public HTTPS URL on **k3s** (Oracle Cloud Always Free), images from GHCR (ARM64), TLS via cert-manager / Let's Encrypt. ([demo](https://crash-severity.duckdns.org/) · [docs](docs/learning-guides/phase-16-cloud-deployment.md))
 - [ ] **Kubernetes autoscaling + canary/shadow** deployment.
 
 ## License & credits

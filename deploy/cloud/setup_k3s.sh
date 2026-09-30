@@ -38,13 +38,15 @@ kubectl get nodes
 echo "== [4/5] Installing ingress-nginx ($INGRESS_NGINX_VER) =="
 kubectl apply -f "https://raw.githubusercontent.com/kubernetes/ingress-nginx/${INGRESS_NGINX_VER}/deploy/static/provider/cloud/deploy.yaml"
 echo "   waiting for the ingress controller ..."
-kubectl wait -n ingress-nginx --for=condition=ready pod \
-    --selector=app.kubernetes.io/component=controller --timeout=240s
+# rollout status waits for the Deployment (handles the brief window before pods appear,
+# unlike `kubectl wait pod` which errors with 'no matching resources found').
+kubectl rollout status deploy/ingress-nginx-controller -n ingress-nginx --timeout=300s
 
 echo "== [5/5] Installing cert-manager ($CERT_MANAGER_VER) =="
 kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VER}/cert-manager.yaml"
 echo "   waiting for cert-manager ..."
-kubectl wait -n cert-manager --for=condition=ready pod --selector=app.kubernetes.io/instance=cert-manager --timeout=240s
+kubectl rollout status deploy/cert-manager -n cert-manager --timeout=300s
+kubectl rollout status deploy/cert-manager-webhook -n cert-manager --timeout=300s
 
 echo ""
 echo "Cluster ready. Next: run deploy/cloud/deploy.sh (see deploy/cloud/DEPLOY.md)."
