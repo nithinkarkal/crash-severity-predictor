@@ -5,9 +5,11 @@
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Model](https://img.shields.io/badge/model-RandomForest-2f8a53)
 ![F1](https://img.shields.io/badge/F1-0.69%20(gate%200.65)-success)
-![Tests](https://img.shields.io/badge/tests-241%20passing-brightgreen)
-![Lint](https://img.shields.io/badge/lint-ruff-000000)
-![Containerized](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-185%20passing-brightgreen)
+![Lint](https://img.shields.io/badge/lint-ruff%20%2B%20mypy-000000)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-manifests-326CE5?logo=kubernetes&logoColor=white)
+![GUI](https://img.shields.io/badge/GUI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)
 [![CI](https://github.com/nithinkarkal/crash-severity-predictor/actions/workflows/asp-ci.yaml/badge.svg)](https://github.com/nithinkarkal/crash-severity-predictor/actions/workflows/asp-ci.yaml)
 
 > **Origin & credit:** This project began as a 4-person MLOps capstone. This repository is my
@@ -15,6 +17,12 @@
 > orchestration (Airflow), drift detection & the F1 quality gate, and monitoring & alerting
 > (Prometheus / Grafana / Slack)**. Ongoing improvements here are my own — see the
 > [Roadmap](#roadmap).
+>
+> **Built solo (post-capstone):** dataset lineage tagging (DVC hash + git SHA into every MLflow
+> run), the `/explain` SHAP endpoint with plain-language rationale, the [model card](MODEL_CARD.md),
+> a role-based **Streamlit GUI** (predict · explain · admin training · embedded Grafana, 2 logins),
+> **Kubernetes** deployment (serving + monitoring via Ingress), and migration to my **own MLflow
+> model registry** (env-configurable DagsHub).
 
 ---
 
@@ -31,7 +39,17 @@ retraining, drift-gated promotion, a registry-backed API, and live monitoring.
 | **Target** | Binary injury severity — `0` light · `1` severe/fatal (≈ 65/35 imbalance) |
 | **Model** | `RandomForestClassifier` (100 trees, depth 20), top-20 predictive features |
 | **Headline metric** | **F1 ≈ 0.69** on the severe class · promotion **quality gate at 0.65** |
-| **Tests** | **241** automated tests across 35 files |
+| **Tests** | **185** automated tests · ruff + mypy + 80% coverage gate in CI |
+
+## Web interface
+
+A **Streamlit GUI** (containerized) ties the whole system together behind **two logins**:
+
+- **Prediction Lab** — enter accident details, get a severity prediction with a **plain-language
+  explanation** and a per-prediction **SHAP** chart ("why this prediction").
+- **Model Insights / Monitoring** — live model metadata and **embedded Grafana dashboards**.
+- **Training** (admin only) — trigger a retraining run with a live status panel.
+- **Roles:** `admin` = full access · `user` = prediction + explanation only (backend-enforced JWT).
 
 ## Architecture
 
@@ -49,8 +67,11 @@ ingest → build dataset → validate → version (DVC) → train + log (MLflow)
 - **Drift-gated promotion.** A retrained model is promoted to `@production` **only if** it beats the
   current champion **and** clears an absolute F1 floor of **0.65** — relative progress *and* absolute
   quality, so "better than a degraded champion" can never ship an unsafe model.
-- **Registry over files.** MLflow (on DagsHub) with alias-based versioning (`@production` /
-  `@fallback`) enables champion/challenger comparison and one-step rollback.
+- **Registry over files.** MLflow on my **own DagsHub** (`nithinkarkal/crash-severity-predictor`)
+  with alias-based versioning (`@production` / `@fallback`) enables champion/challenger comparison
+  and one-step rollback. The registry repo is configurable via env (`DAGSHUB_REPO_OWNER/NAME`).
+- **Role-based GUI.** A Streamlit front-end with JWT auth and two roles (admin / user); the backend
+  is authoritative for authorization.
 - **Reproducible data.** DVC versions each dataset; the pipeline records the exact data state used
   for every training run.
 - **Secure serving.** FastAPI with JWT auth behind an NGINX TLS reverse proxy + rate limiting;
@@ -60,8 +81,8 @@ ingest → build dataset → validate → version (DVC) → train + log (MLflow)
 
 ## Tech stack
 
-`Python` · `scikit-learn` · `Airflow` · `MLflow` · `Evidently` · `DVC` · `FastAPI` · `Docker` ·
-`NGINX` · `Prometheus` · `Grafana` · `GitHub Actions`
+`Python` · `scikit-learn` · `Airflow` · `MLflow` · `Evidently` · `DVC` · `FastAPI` · `Streamlit` ·
+`Docker` · `Kubernetes` · `NGINX` · `Prometheus` · `Grafana` · `GitHub Actions`
 
 ## Quickstart
 
@@ -81,7 +102,18 @@ docker compose ps            # wait for healthy
 curl -sk https://asp.local:8081/api/v1/health
 ```
 
-Monitoring is at `https://asp.local:8081/grafana/`. See [`docs/`](docs/) for the full walkthrough.
+The GUI is at `http://localhost:8501`, monitoring at `https://asp.local:8081/grafana/`. See
+[`docs/`](docs/) for the full walkthrough.
+
+### Run on Kubernetes
+
+The serving + monitoring stack also runs on Kubernetes (Deployments/Services/Ingress, tested on
+`kind`) — see [`k8s/`](k8s/):
+
+```bash
+kubectl apply -f k8s/          # or: ./k8s/deploy.ps1   (creates secrets/config + applies)
+# then open http://asp.local/  (GUI), /grafana/, /api/v1/health
+```
 
 ## Roadmap
 
@@ -89,7 +121,11 @@ Monitoring is at `https://asp.local:8081/grafana/`. See [`docs/`](docs/) for the
 - [x] **`/explain` endpoint** — per-prediction SHAP explanations. ([docs](docs/explain-endpoint.md))
 - [x] **Plain-language predictions** — turn SHAP output into a human-readable rationale (template-based; LLM upgrade optional). ([docs](docs/explain-endpoint.md))
 - [x] **Model card** — intended use, performance, limitations, and GDPR/ethics. ([MODEL_CARD.md](MODEL_CARD.md))
-- [ ] **Kubernetes** — autoscaling + canary/shadow deployment.
+- [x] **Role-based Streamlit GUI** — predict + explain + admin training + embedded Grafana, 2 logins. ([docs](docs/learning-guides/phase-14-streamlit-gui-rbac.md))
+- [x] **Kubernetes** — serving + monitoring on k8s via Ingress (tested on kind). ([k8s/](k8s/))
+- [x] **Independent model registry** — own DagsHub repo, configurable via env.
+- [ ] **Cloud deployment** — public HTTPS URL (managed hosting → k3s in the cloud).
+- [ ] **Kubernetes autoscaling + canary/shadow** deployment.
 
 ## License & credits
 
